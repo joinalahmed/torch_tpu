@@ -24,7 +24,7 @@ csrc/common/discovery.cc: {infeasible: 0, remaining: 1, total: 1}
 csrc/common/dtype.cc: {infeasible: 0, remaining: 4, total: 6}
 csrc/common/dynamism_utils.cc: {infeasible: 0, remaining: 1, total: 1}
 csrc/common/environment.cc: {infeasible: 0, remaining: 2, total: 2}
-csrc/common/error_utils.cc: {infeasible: 1, remaining: 5, total: 9}
+csrc/common/error_utils.cc: {infeasible: 1, remaining: 5, total: 10}
 csrc/common/error_utils.h: {infeasible: 0, remaining: 3, total: 3}
 csrc/common/excess_precision.cc: {infeasible: 0, remaining: 0, total: 1}
 csrc/common/layout_utils.cc: {infeasible: 0, remaining: 0, total: 2}
@@ -99,7 +99,7 @@ csrc/ops/convolution/convolution.cc: {infeasible: 1, remaining: 0, total: 2}
 csrc/ops/convolution/convolution_aten_kernels.cc: {infeasible: 0, remaining: 0, total: 8}
 csrc/ops/convolution/convolution_checks.cc: {infeasible: 0, remaining: 0, total: 16}
 csrc/ops/copy_from/copy_from_aten_kernels.cc: {infeasible: 1, remaining: 0, total: 3}
-csrc/ops/copy_from/tpu_to_cpu.cc: {infeasible: 6, remaining: 0, total: 7}
+csrc/ops/copy_from/tpu_to_cpu.cc: {infeasible: 4, remaining: 0, total: 5}
 csrc/ops/copy_from/tpu_to_tpu.cc: {infeasible: 1, remaining: 1, total: 2}
 csrc/ops/cross_entropy_loss/cross_entropy_loss_aten_kernels.cc: {infeasible: 4, remaining: 0, total: 17}
 csrc/ops/ctc_loss/ctc_loss_aten_kernels.cc: {infeasible: 2, remaining: 0, total: 12}

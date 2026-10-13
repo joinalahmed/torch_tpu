@@ -18079,6 +18079,24 @@ class UpsampleBilinear2dAaErrorTest(et.ErrorTestBase):
       ):
         torch.addcdiv(s, t1, t2, value=1e40)
 
+  def test_out_of_memory_error(self):
+    """Tests that OOM raises OutOfMemoryError."""
+    with et.assert_raises_message(
+        torch.OutOfMemoryError,
+        tpu="""the TPU ran out of memory while allocating tensor uint8[107374182400]""",
+        gpu=re.compile(
+            r"CUDA out of memory\. Tried to allocate 100\.00 GiB\..*",
+            re.DOTALL,
+        ),
+        message_reviewed_by="wan",
+    ):
+      # GPU raises torch.OutOfMemoryError here (eager allocation of 100 GiB):
+      b = torch.empty(100 * 1024**3, dtype=torch.uint8, device=et.device())
+      b.fill_(1)
+      # TPU defers allocation/execution and raises torch.OutOfMemoryError here
+      # upon materialization:
+      b[:8].sum().item()
+
 
 if __name__ == "__main__":
   multiprocessing.handle_test_main(absltest.main)

@@ -863,8 +863,9 @@ absl::StatusOr<MlirOpResults<2>> BuildQdwhShlo(
       any_active = active_mask;
     } else {
       TT_ASSIGN_OR_RETURN(
-          any_active, BuildAnyShlo(active_mask, GetAllDimensions(active_mask),
-                                   ReductionMode::kDropDims));
+          any_active, BuildAllAnyReductionShlo(AllAnyOp::kAny, active_mask,
+                                               GetAllDimensions(active_mask),
+                                               ReductionMode::kDropDims));
     }
 
     const mlir::MlirOp cond = mlir::stablehlo::And(any_active, i_lt_max);
@@ -1186,8 +1187,9 @@ absl::StatusOr<mlir::MlirOp> BuildCheckRankDeficiency(
   if (!batch_shape.empty()) {
     TT_ASSIGN_OR_RETURN(
         need_correction_any,
-        BuildAnyShlo(need_correction, GetAllDimensions(need_correction),
-                     ReductionMode::kDropDims));
+        BuildAllAnyReductionShlo(AllAnyOp::kAny, need_correction,
+                                 GetAllDimensions(need_correction),
+                                 ReductionMode::kDropDims));
   }
 
   return need_correction_any;
@@ -1374,8 +1376,9 @@ absl::StatusOr<mlir::MlirOp> BuildIsFiniteShlo(mlir::MlirOp input) {
 absl::StatusOr<mlir::MlirOp> BuildAllFinite(mlir::MlirOp input) {
   TT_ASSIGN_OR_RETURN(const mlir::MlirOp is_finite, BuildIsFiniteShlo(input));
   const int64_t rank = GetTensorTypeOrDie(is_finite).getRank();
-  return BuildAllShlo(is_finite, {rank - 2, rank - 1},
-                      ReductionMode::kDropDims);
+  return BuildAllAnyReductionShlo(AllAnyOp::kAll, is_finite,
+                                  {rank - 2, rank - 1},
+                                  ReductionMode::kDropDims);
 }
 
 // Returns a tensor of the same shape and type as the input, but filled with NaN

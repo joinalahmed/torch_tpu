@@ -45,6 +45,7 @@
 #include "csrc/common/error_utils.h"
 #include "csrc/common/shape.h"
 #include "csrc/common/to_string.h"
+#include "csrc/common/utils.h"
 #include "csrc/eager/device_buffer.h"
 #include "csrc/eager/eager_mode.h"
 #include "csrc/eager/events_queue.h"
@@ -317,8 +318,7 @@ absl::Status AssignBufferToOutput(const at::Tensor& output,
   TT_RET_CHECK(  // ERROR_COV_INFEASIBLE=Output tensors are always defined.
       output.defined(), error::kInvalidArgument)
       << "expected defined output tensor";
-  Dimensions logical_dims(result_buffer.dimensions().begin(),
-                          result_buffer.dimensions().end());
+  Dimensions logical_dims = CopyIntVector(result_buffer.dimensions());
   if (result_buffer.element_type() == mlir::ElementType::F4E2M1FN) {
     ABSL_CHECK(!logical_dims.empty());         // CRASH_OK
     ABSL_CHECK_EQ(logical_dims.back() % 2, 0)  // CRASH_OK

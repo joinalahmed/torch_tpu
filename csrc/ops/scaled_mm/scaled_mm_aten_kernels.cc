@@ -38,6 +38,7 @@
 #include "csrc/common/error_utils.h"
 #include "csrc/common/macro_utils.h"
 #include "csrc/common/to_string.h"
+#include "csrc/common/utils.h"
 #include "csrc/eager/op_dispatcher.h"
 #include "csrc/eager/tensor_to_buffer.h"
 #include "csrc/ops/macros/kernel.h"
@@ -94,7 +95,7 @@ absl::StatusOr<mlir::MlirOp> ReshapeScaleIfNeeded(mlir::MlirOp scale,
     // Scalar (tensorwise) scale: broadcasts as-is, no reshape needed.
     return scale;
   }
-  Dimensions before(type.getShape().begin(), type.getShape().end());
+  Dimensions before = CopyIntVector(type.getShape());
   if (before == target) {
     return scale;
   }
@@ -386,12 +387,9 @@ absl::StatusOr<mlir::MlirOp> BuildUnswizzle(mlir::MlirOp scale, Operand operand,
   //    each identified by [row_block, col_block]:
   //    [row_block, col_block, group, position, column]
   const Dimensions shape1 = {outer_blocks, k_blocks, 32, 4, 4};
-  TT_ASSIGN_OR_RETURN(
-      mlir::MlirOp op1,
-      ReshapeFromStaticDimensions(scale,
-                                  Dimensions(scale_type.getShape().begin(),
-                                             scale_type.getShape().end()),
-                                  shape1));
+  TT_ASSIGN_OR_RETURN(mlir::MlirOp op1,
+                      ReshapeFromStaticDimensions(
+                          scale, CopyIntVector(scale_type.getShape()), shape1));
 
   // 2. Transpose each [32, 4, 4] tile to [4, 32, 4], which undoes the deal:
   //    its rows now read 0, 1, 2, ... 127 instead of 0, 32, 64, 96, 1, 33, ...
@@ -462,25 +460,20 @@ absl::StatusOr<mlir::MlirOp> BuildDequantizeBlockWise32(mlir::MlirOp input,
 
   TT_ASSIGN_OR_RETURN(
       mlir::MlirOp input_reshaped,
-      ReshapeFromStaticDimensions(input_f32,
-                                  Dimensions(input_type.getShape().begin(),
-                                             input_type.getShape().end()),
-                                  reshape_in_dims));
+      ReshapeFromStaticDimensions(
+          input_f32, CopyIntVector(input_type.getShape()), reshape_in_dims));
 
   TT_ASSIGN_OR_RETURN(
       mlir::MlirOp scale_reshaped,
-      ReshapeFromStaticDimensions(scale_f32,
-                                  Dimensions(scale_type.getShape().begin(),
-                                             scale_type.getShape().end()),
-                                  reshape_scale_dims));
+      ReshapeFromStaticDimensions(
+          scale_f32, CopyIntVector(scale_type.getShape()), reshape_scale_dims));
 
   TT_ASSIGN_OR_RETURN(
       auto bcast, ApplyBroadcastIfNeeded<2>({input_reshaped, scale_reshaped}));
   mlir::MlirOp dequantized = mlir::stablehlo::Mul(bcast[0], bcast[1]);
 
-  return ReshapeFromStaticDimensions(
-      dequantized, reshape_in_dims,
-      Dimensions(input_type.getShape().begin(), input_type.getShape().end()));
+  return ReshapeFromStaticDimensions(dequantized, reshape_in_dims,
+                                     CopyIntVector(input_type.getShape()));
 }
 
 absl::StatusOr<mlir::MlirOp> ApplyScalesAndBias(

@@ -171,6 +171,7 @@ torch_tpu_cc_library(
         ":error_utils",
         ":shape",
         ":to_string",
+        ":utils",
         "//csrc/pjrt:pjrt_state",
         "//shims/torch:aten_headers",
         "//shims/torch/c10/core:base_headers",

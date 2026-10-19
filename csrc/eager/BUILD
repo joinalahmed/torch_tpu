@@ -662,6 +662,7 @@ torch_tpu_cc_library(
         "//csrc/common:op_name_stack",
         "//csrc/common:shape",
         "//csrc/common:to_string",
+        "//csrc/common:utils",
         "//csrc/ops:op_builder_utils",
         "//csrc/ops:op_names",
         "//csrc/ops/macros:kernel",

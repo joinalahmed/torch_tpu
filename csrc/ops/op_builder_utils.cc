@@ -1546,8 +1546,7 @@ absl::StatusOr<mlir::MlirOp> BuildMaybeSlice(mlir::MlirOp op, int64_t dimension,
   }
 
   auto input_tensor_type = GetTensorTypeOrDie(op);
-  Dimensions input_shape(input_tensor_type.getShape().begin(),
-                         input_tensor_type.getShape().end());
+  Dimensions input_shape = CopyIntVector(input_tensor_type.getShape());
 
   TT_RET_CHECK(  // ERROR_COV_INFEASIBLE=Current usages are guaranteed to be
                  // within range.

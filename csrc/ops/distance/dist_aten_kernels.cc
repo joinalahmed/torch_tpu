@@ -32,6 +32,7 @@
 #include "csrc/common/error_utils.h"
 #include "csrc/common/fixed_size_span.h"
 #include "csrc/common/to_string.h"
+#include "csrc/common/utils.h"
 #include "csrc/eager/device_buffer.h"
 #include "csrc/eager/op_dispatcher.h"
 #include "csrc/eager/tensor_to_buffer.h"
@@ -141,8 +142,7 @@ absl::StatusOr<mlir::MlirOp> BuildCdistForwardShlo(
   const mlir::Type element_type = x1_type.getElementType();
 
   // Define the target shape for the difference tensor: (B_common..., R1, R2, C)
-  Dimensions target_diff_shape(common_batch_shape.begin(),
-                               common_batch_shape.end());
+  Dimensions target_diff_shape = common_batch_shape;
   target_diff_shape.insert(target_diff_shape.end(), {r1, r2, c});
   const int64_t common_batch_rank = common_batch_shape.size();
   mlir::RankedTensorType bcast_type =
@@ -429,8 +429,7 @@ absl::StatusOr<mlir::MlirOp> BuildCdistBackwardShlo(
   const mlir::Type element_type = x1_type.getElementType();
 
   const int64_t common_batch_rank = common_batch_shape.size();
-  Dimensions target_diff_shape(common_batch_shape.begin(),
-                               common_batch_shape.end());
+  Dimensions target_diff_shape = common_batch_shape;
   target_diff_shape.insert(target_diff_shape.end(), {r1, r2, c});
   const mlir::RankedTensorType bcast_type =
       mlir::RankedTensorType::get(target_diff_shape, element_type);
@@ -572,8 +571,8 @@ at::Tensor AtenCdistForward(const at::Tensor& x1, const at::Tensor& x2,
     const int64_t r1 = x1.size(-2);
     const int64_t r2 = x2.size(-2);
 
-    Dimensions batch_tensor1(x1.sizes().begin(), x1.sizes().end() - 2);
-    Dimensions batch_tensor2(x2.sizes().begin(), x2.sizes().end() - 2);
+    Dimensions batch_tensor1 = CopyIntVector(x1.sizes().slice(0, x1.dim() - 2));
+    Dimensions batch_tensor2 = CopyIntVector(x2.sizes().slice(0, x2.dim() - 2));
     TT_ASSIGN_OR_THROW(Dimensions common_batch_shape,
                        InferSize(batch_tensor1, batch_tensor2));
 
@@ -633,8 +632,8 @@ at::Tensor AtenCdistBackward(const at::Tensor& grad, const at::Tensor& x1,
     const int64_t r1 = x1.size(-2);
     const int64_t c = x1.size(-1);
     const int64_t r2 = x2.size(-2);
-    Dimensions batch_tensor1(x1.sizes().begin(), x1.sizes().end() - 2);
-    Dimensions batch_tensor2(x2.sizes().begin(), x2.sizes().end() - 2);
+    Dimensions batch_tensor1 = CopyIntVector(x1.sizes().slice(0, x1.dim() - 2));
+    Dimensions batch_tensor2 = CopyIntVector(x2.sizes().slice(0, x2.dim() - 2));
     TT_ASSIGN_OR_THROW(Dimensions common_batch_shape,
                        InferSize(batch_tensor1, batch_tensor2));
 

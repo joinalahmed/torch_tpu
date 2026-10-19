@@ -362,8 +362,7 @@ std::vector<at::Tensor> AtenSparseMapRow(
                              ConvertTo<mlir::ElementType>(dummy.scalar_type()));
           out_dtypes.push_back(dtype);
           out_dims_storage.push_back(CopyIntVector(dummy.sizes()));
-          output_shapes.emplace_back(
-              Dimensions(dummy.sizes().begin(), dummy.sizes().end()), dtype);
+          output_shapes.emplace_back(CopyIntVector(dummy.sizes()), dtype);
         }
         for (const auto& dims : out_dims_storage) {
           out_dims_spans.push_back(absl::MakeConstSpan(dims));
@@ -371,8 +370,7 @@ std::vector<at::Tensor> AtenSparseMapRow(
 
         const int64_t total_csr_tensors = csr_tensors.size();
         const int64_t total_dense_args = dense_args.size();
-        const SmallInt64Vector csr_lengths_vec(csr_lengths.begin(),
-                                               csr_lengths.end());
+        const SmallInt64Vector csr_lengths_vec = CopyIntVector(csr_lengths);
 
         // 4. Define the MLIR graph-builder callback invoked during tracing or
         // compilation.

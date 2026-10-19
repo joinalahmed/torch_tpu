@@ -30,6 +30,7 @@
 #include "csrc/common/dtype.h"
 #include "csrc/common/error_utils.h"
 #include "csrc/common/fixed_size_span.h"
+#include "csrc/common/utils.h"
 #include "csrc/distributed/process_group_tpu.h"
 #include "csrc/eager/device_buffer.h"
 #include "csrc/eager/op_dispatcher.h"
@@ -204,8 +205,7 @@ at::Tensor AtenSparseDenseMatmulGradWithSgd(
                   row_pointers,    embedding_ids,    sample_ids,   gains,
                   embedding_table, activations_grad, learning_rate};
 
-              torch_tpu::Dimensions out_dims(embedding_table.sizes().begin(),
-                                             embedding_table.sizes().end());
+              Dimensions out_dims = CopyIntVector(embedding_table.sizes());
 
               auto builder_fn = SparseDenseMatmulGradWithSgdBuilder(
                   device_batch_size, max_ids_per_partition,

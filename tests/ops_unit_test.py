@@ -18825,6 +18825,14 @@ class OpsGradUnitTest(TorchTpuVsCpuTestBase):
 
       self.assert_close_tpu_vs_cpu(test_fn)
 
+    for dtype in [torch.bfloat16, torch.float16]:
+      x_zero_feat = torch.randn(3, 0, dtype=dtype)
+
+      def test_zero_feat_fn(device, x_zero_feat=x_zero_feat):
+        return torch.nn.functional.pdist(x_zero_feat.to(device), p=2.0)
+
+      self.assert_close_tpu_vs_cpu(test_zero_feat_fn)
+
   @parameterized.product(
       stride=[2],
       padding=[1],

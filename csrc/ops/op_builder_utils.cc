@@ -1212,8 +1212,7 @@ std::string BuildModuleNameFromPyContext(
   }
 
   os << "_";
-  mlir::Location location =
-      torch_tpu::MakeMlirLocation(mlir_context, *python_context);
+  mlir::Location location = MakeMlirLocation(mlir_context, *python_context);
 
   // Traverse the location from the current frame up through callee frames
   // until we hit a viable user frame of the form

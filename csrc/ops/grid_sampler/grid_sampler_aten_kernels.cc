@@ -1080,7 +1080,7 @@ absl::Status ValidateInputAndPaddingMode(const at::Tensor& input,
 
   TT_RET_CHECK(IsFloatingPoint(input), error::kInvalidArgument)
       << "expected the input dtype to be floating point, got "
-      << torch_tpu::ToString(input.scalar_type());
+      << ToString(input.scalar_type());
 
   return absl::OkStatus();
 }

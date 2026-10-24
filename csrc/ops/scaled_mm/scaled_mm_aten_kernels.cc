@@ -74,11 +74,9 @@ absl::StatusOr<mlir::MlirOp> BuildStablehloDotGeneral(
   auto rhs_type = GetTensorTypeOrDie(rhs);
   Dimensions result_shape = {lhs_type.getShape()[0], rhs_type.getShape()[1]};
 
-  TT_ASSIGN_OR_RETURN(
-      mlir::ElementType lhs_elem_type,
-      torch_tpu::ConvertTo<mlir::ElementType>(lhs_type.getElementType()));
-  TT_ASSIGN_OR_RETURN(auto comp_dtype,
-                      torch_tpu::InferComputationDtype(lhs_elem_type));
+  TT_ASSIGN_OR_RETURN(mlir::ElementType lhs_elem_type,
+                      ConvertTo<mlir::ElementType>(lhs_type.getElementType()));
+  TT_ASSIGN_OR_RETURN(auto comp_dtype, InferComputationDtype(lhs_elem_type));
 
   auto result_type = mlir::RankedTensorType::get(
       result_shape, mlir::getElementType(ctx, comp_dtype));

@@ -326,7 +326,7 @@ std::vector<at::Tensor> AtenSparseMapRow(
     int64_t max_non_zeroes_per_row, int64_t pad_value, int64_t max_pad_per_row,
     double wait_threshold, int64_t result_row_pointer_op_index) {
   TT_KERNEL(
-      torch_tpu::OpName::kSparseMapRow, param_keys,
+      OpName::kSparseMapRow, param_keys,
       (csr_tensors, csr_lengths, dense_args, body_mlir, dummy_outputs,
        max_non_zeroes_per_row, pad_value, max_pad_per_row, wait_threshold,
        result_row_pointer_op_index),
@@ -413,7 +413,7 @@ std::vector<at::Tensor> AtenSparseMapRow(
         // 5. Dispatch op execution on TPU via DispatchOp, compiling or
         // retrieving the cached executable.
         TT_ASSIGN_OR_THROW(
-            auto results, (torch_tpu::DispatchOp<kDynamicSize, kDynamicSize>(
+            auto results, (DispatchOp<kDynamicSize, kDynamicSize>(
                               std::move(builder_fn), all_inputs,
                               {.out_dtypes = out_dtypes_span,
                                .out_dims_list = out_dims_list_span,

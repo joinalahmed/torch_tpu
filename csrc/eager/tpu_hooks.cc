@@ -299,8 +299,11 @@ void TpuDeviceGuardImpl::record(void** event, const c10::Stream& stream,
   *event = new std::shared_ptr<EventSnapshot>(std::move(shared_event));
 }
 void TpuDeviceGuardImpl::block(void* event, const c10::Stream& stream) const {
-  TT_WARN_ONCE(WarningCategory::kTorchTpu,
-               "Asynchronous stream waiting is not yet implemented.");
+  std::shared_ptr<EventSnapshot>* snapshot =
+      reinterpret_cast<std::shared_ptr<EventSnapshot>*>(event);
+  c10::DeviceIndex device_index = stream.device_index();
+  c10::StreamId stream_id = stream.id();
+  InsertStreamWait(device_index, stream_id, **snapshot);
 }
 bool TpuDeviceGuardImpl::queryEvent(void* event) const {
   std::shared_ptr<EventSnapshot>* snapshot =

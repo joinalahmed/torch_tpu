@@ -580,7 +580,10 @@ ExecutionTask::GetArgumentBuffers() {
   std::vector<xla::PjRtBuffer*> root_args;
   root_args.reserve(arguments_.size());
   for (const auto&& [index, argument] : llvm::enumerate(arguments_)) {
-    if (argument.is_executing()) {
+    if (argument.is_executing() || argument.is_transferring()) {
+      // If is_executing() is true, then this will not block as the PjRtBuffer
+      // already exists. If is_transferring() is true, then this will block
+      // until the transfer has started and provides a PjRtBuffer.
       ABSL_VLOG(1) << "Get PjRtBuffer for DeviceBufferRef index: " << index;
       TT_ASSIGN_OR_RETURN(xla::PjRtBuffer * pjrt_buffer,
                           argument.AwaitBuffer());

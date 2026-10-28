@@ -128,12 +128,11 @@ absl::StatusOr<DeviceBufferRef> MakeBuffer(
     // Then asynchronously copy it to device as a materialized DeviceBufferRef.
     TT_ASSIGN_OR_RETURN(mlir::ElementType element_type,
                         ConvertTo<mlir::ElementType>(scalar_type));
+    auto transfer = HostToDeviceTransfer::FromBytesVector(
+        std::move(scalar_bytes), element_type,
+        /*dimensions=*/{});
     TT_ASSIGN_OR_RETURN(DeviceBufferRef buf_ref,
-                        HostToDeviceTransfer::FromBytesVector(
-                            std::move(scalar_bytes), element_type,
-                            /*dimensions=*/{})
-                            .Run());
-    RecordAsyncHostToDevice(buf_ref);
+                        ScheduleHostToDeviceTransfer(std::move(transfer)));
     scalar_map.insert({hashable_scalar, buf_ref});
     return buf_ref;
   }

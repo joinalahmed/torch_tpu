@@ -174,7 +174,7 @@ absl::Status CopyDeviceBufferRefToCpuPtrImpl(
                     MaterializationBlockMode::kNonBlocking),
         ConvertTo<at::ScalarType>(src_buffer_ref.element_type()),
         src_buffer_ref.dimensions()));
-    RecordAsyncDeviceToHost(transfer.Run());
+    ScheduleDeviceToHostTransfer(std::move(transfer));
     return absl::OkStatus();
   }
 
@@ -199,8 +199,8 @@ absl::Status CopyDeviceBufferRefToCpuPtrImpl(
     TT_RETURN_IF_ERROR(src_buffer_ref.Synchronize());
   }
 
-  // Start the copy from TPU to CPU.
-  RecordAsyncDeviceToHost(transfer.Run());
+  // Schedule the copy from TPU to CPU.
+  ScheduleDeviceToHostTransfer(std::move(transfer));
 
   // Then wait for the copy (and materialization, if on the same stream) to
   // complete, returning any errors.

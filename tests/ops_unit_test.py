@@ -13221,29 +13221,39 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
 
     self.assert_close_tpu_vs_cpu(run)
 
-  @parameterized.product(
-      batch_first=[True, False],
-      norm_first=[True, False],
-      use_gelu=[True, False],
-      dtype=[torch.float32, torch.bfloat16],
-      mask_kind=[None, "2d_bool", "2d_float"],
-  )
-  def test_transformer_encoder_layer_fwd(
-      self, batch_first, norm_first, use_gelu, dtype, mask_kind
-  ):
+  def _check_transformer_encoder_layer_fwd(
+      self,
+      *,
+      batch_size: int,
+      seq_len: int,
+      norm_first: bool,
+      use_gelu: bool,
+      dtype: torch.dtype,
+      mask_kind: str | None,
+  ) -> None:
+    """Compares `_transformer_encoder_layer_fwd` on TPU against CPU.
+
+    Args:
+      batch_size: The batch size B.
+      seq_len: The sequence length T.
+      norm_first: Whether to apply pre-LN (True) or post-LN (False).
+      use_gelu: Whether the FFN activation is GELU (True) or ReLU (False).
+      dtype: The dtype of the inputs.
+      mask_kind: None for no mask, or "<kind>_<bool|float>" where kind is "4d"
+        (a [B, num_heads, T, T] default_mask, mask_type 2), "src_mask" (a [T, T]
+        attention mask, mask_type 0), or "key_padding" (a [B, T] key padding
+        mask, mask_type 1). Float masks mark masked positions with -10000.0.
+    """
     embed_dim = 16
     num_heads = 4
     d_ff = 32
     eps = 1e-5
 
-    dim0, dim1 = (2, 8) if batch_first else (8, 2)
-    batch_size, seq_len = dim0, dim1
-
     scale = 1.0 / math.sqrt(embed_dim)
     cpu_src = (
-        torch.linspace(-1.0, 1.0, dim0 * dim1 * embed_dim, dtype=dtype).reshape(
-            dim0, dim1, embed_dim
-        )
+        torch.linspace(
+            -1.0, 1.0, batch_size * seq_len * embed_dim, dtype=dtype
+        ).reshape(batch_size, seq_len, embed_dim)
         * 0.5
     )
     cpu_qkv_w = (
@@ -13278,21 +13288,30 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
 
     cpu_mask = None
     mask_type = None
-    if mask_kind == "2d_bool":
-      cpu_mask = ~torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool))
-      cpu_mask = cpu_mask.view(1, 1, seq_len, seq_len).expand(
-          batch_size, num_heads, seq_len, seq_len
-      )
-      mask_type = 2
-    elif mask_kind == "2d_float":
-      cpu_mask = torch.zeros(seq_len, seq_len, dtype=dtype)
-      cpu_mask.masked_fill_(
-          ~torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool)), -10000.0
-      )
-      cpu_mask = cpu_mask.view(1, 1, seq_len, seq_len).expand(
-          batch_size, num_heads, seq_len, seq_len
-      )
-      mask_type = 2
+    if mask_kind is not None:
+      kind, mask_dtype = mask_kind.rsplit("_", 1)
+      causal = ~torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool))
+      if kind == "4d":
+        masked = causal.view(1, 1, seq_len, seq_len).expand(
+            batch_size, num_heads, seq_len, seq_len
+        )
+        mask_type = 2
+      elif kind == "src_mask":
+        masked = causal
+        mask_type = 0
+      else:
+        assert kind == "key_padding", mask_kind
+        # Pad out the last key position of every sequence.
+        masked = torch.zeros(batch_size, seq_len, dtype=torch.bool)
+        masked[:, -1] = True
+        mask_type = 1
+      if mask_dtype == "bool":
+        cpu_mask = masked
+      else:
+        assert mask_dtype == "float", mask_kind
+        cpu_mask = torch.zeros(masked.shape, dtype=dtype).masked_fill(
+            masked, -10000.0
+        )
 
     def compute(device):
       src = cpu_src.to(device)
@@ -13336,6 +13355,118 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
     rtol = 3e-2
     atol = 3e-2
     self.assert_close_tpu_vs_cpu(compute, rtol=rtol, atol=atol)
+
+  @parameterized.product(
+      batch_first=[True, False],
+      norm_first=[True, False],
+      use_gelu=[True, False],
+      dtype=[torch.float32, torch.bfloat16],
+      mask_kind=[None, "4d_bool", "4d_float"],
+  )
+  def test_transformer_encoder_layer_fwd(
+      self, batch_first, norm_first, use_gelu, dtype, mask_kind
+  ):
+    batch_size, seq_len = (2, 8) if batch_first else (8, 2)
+    self._check_transformer_encoder_layer_fwd(
+        batch_size=batch_size,
+        seq_len=seq_len,
+        norm_first=norm_first,
+        use_gelu=use_gelu,
+        dtype=dtype,
+        mask_kind=mask_kind,
+    )
+
+  @parameterized.product(
+      shape=[(2, 8), (4, 4)],
+      mask_kind=[
+          "src_mask_bool",
+          "src_mask_float",
+          "key_padding_bool",
+          "key_padding_float",
+      ],
+  )
+  def test_transformer_encoder_layer_fwd_2d_mask(self, shape, mask_kind):
+    """Tests 2-D masks: a [T, T] src_mask and a [B, T] key padding mask.
+
+    The (4, 4) shape is the square B == T case, where the mask shape alone
+    cannot tell the two kinds apart and the kernel must rely on mask_type.
+    """
+    batch_size, seq_len = shape
+    self._check_transformer_encoder_layer_fwd(
+        batch_size=batch_size,
+        seq_len=seq_len,
+        norm_first=True,
+        use_gelu=True,
+        dtype=torch.float32,
+        mask_kind=mask_kind,
+    )
+
+  @parameterized.product(
+      shape=[(2, 4), (4, 4)],
+      mask_kind=["src_mask", "key_padding", "default_mask"],
+      mask_dtype=[torch.bool, torch.float32],
+      need_weights=[False, True],
+  )
+  def test_native_multi_head_attention_mask_types(
+      self, shape, mask_kind, mask_dtype, need_weights
+  ):
+    """Tests each mask_type of `_native_multi_head_attention` against CPU.
+
+    Complements ops_test.py, which covers neither mask_type 2, 2-D masks with
+    need_weights=False, nor the square B == T case (4, 4), where the mask shape
+    alone cannot tell a [T, T] src_mask from a [B, T] src_key_padding_mask.
+    """
+    batch_size, seq_len = shape
+    embed_dim = 8
+    num_head = 2
+    query = torch.randn(batch_size, seq_len, embed_dim)
+    key = torch.randn(batch_size, seq_len, embed_dim)
+    value = torch.randn(batch_size, seq_len, embed_dim)
+    qkv_weight = torch.randn(3 * embed_dim, embed_dim) * 0.1
+    qkv_bias = torch.randn(3 * embed_dim) * 0.1
+    proj_weight = torch.randn(embed_dim, embed_dim) * 0.1
+    proj_bias = torch.randn(embed_dim) * 0.1
+
+    causal = torch.triu(
+        torch.ones(seq_len, seq_len, dtype=torch.bool), diagonal=1
+    )
+    if mask_kind == "src_mask":
+      masked = causal
+      mask_type = 0
+    elif mask_kind == "key_padding":
+      # Pad out the last key position of every sequence.
+      masked = torch.zeros(batch_size, seq_len, dtype=torch.bool)
+      masked[:, -1] = True
+      mask_type = 1
+    else:
+      masked = causal.expand(batch_size, num_head, seq_len, seq_len)
+      mask_type = 2
+    if mask_dtype == torch.bool:
+      cpu_mask = masked
+    else:
+      cpu_mask = torch.zeros(masked.shape, dtype=mask_dtype).masked_fill(
+          masked, -10000.0
+      )
+
+    def compute(device):
+      out, weights = torch._native_multi_head_attention(
+          query.to(device),
+          key.to(device),
+          value.to(device),
+          embed_dim,
+          num_head,
+          qkv_weight.to(device),
+          qkv_bias.to(device),
+          proj_weight.to(device),
+          proj_bias.to(device),
+          mask=cpu_mask.to(device),
+          need_weights=need_weights,
+          average_attn_weights=True,
+          mask_type=mask_type,
+      )
+      return (out, weights) if need_weights else out
+
+    self.assert_close_tpu_vs_cpu(compute, rtol=3e-2, atol=3e-2)
 
   def test_segment_reduce_modes(self):
     """Tests segment_reduce with different reduction modes."""

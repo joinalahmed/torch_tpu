@@ -197,11 +197,8 @@ class DeviceCountTest(
         visible_devices_at_start=None, visible_devices_before_init="0"
     )
 
-    self.assertGreater(
-        counts.before_init,
-        1,
-        "This test needs a host with multiple devices.",
-    )
+    if counts.before_init <= 1:
+      self.skipTest("This test needs a host with multiple devices.")
     self.assertEqual(counts.after_env_change, 1)
     # Like PyTorch's `test_device_count_not_cached_pre_init`, this doesn't check
     # the count after init: CUDA can read `CUDA_VISIBLE_DEVICES` before the

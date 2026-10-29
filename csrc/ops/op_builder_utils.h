@@ -569,7 +569,7 @@ absl::StatusOr<std::array<mlir::MlirOp, kNumInputs>> ApplyBroadcastIfNeeded(
   TT_RET_CHECK(mlir::succeeded(broadcasted_values_or_fail),
                error::kInvalidArgument)
       << "failed to broadcast tensors: "
-      << diag_handler.ConsumeStatus().message();
+      << AdaptExternalErrorMessage(diag_handler.ConsumeStatus().message());
   mlir::SmallVector<mlir::Value, kNumInputs> broadcasted_values =
       std::move(*broadcasted_values_or_fail);
   for (int i = 0; i < kNumInputs; ++i) {

@@ -939,7 +939,7 @@ absl::StatusOr<mlir::MlirOp> BroadcastIfNeeded(
   TT_RET_CHECK(mlir::succeeded(broadcasted_value_or_fail),
                error::kInvalidArgument)
       << "failed to broadcast tensor: "
-      << diag_handler.ConsumeStatus().message();
+      << AdaptExternalErrorMessage(diag_handler.ConsumeStatus().message());
   return mlir::MlirOp(input.getBuilder(), *broadcasted_value_or_fail);
 }
 
@@ -963,7 +963,7 @@ absl::StatusOr<mlir::MlirOp> BroadcastIfNeeded(
   TT_RET_CHECK(mlir::succeeded(broadcasted_value_or_fail),
                error::kInvalidArgument)
       << "failed to broadcast tensor: "
-      << diag_handler.ConsumeStatus().message();
+      << AdaptExternalErrorMessage(diag_handler.ConsumeStatus().message());
   return mlir::MlirOp(input.getBuilder(), *broadcasted_value_or_fail);
 }
 
@@ -989,7 +989,7 @@ absl::StatusOr<std::vector<mlir::MlirOp>> ApplyBroadcastIfNeeded(
   TT_RET_CHECK(mlir::succeeded(broadcasted_values_or_fail),
                error::kInvalidArgument)
       << "failed to broadcast tensors: "
-      << diag_handler.ConsumeStatus().message();
+      << AdaptExternalErrorMessage(diag_handler.ConsumeStatus().message());
   mlir::SmallVector<mlir::Value> broadcasted_values =
       std::move(*broadcasted_values_or_fail);
   std::vector<mlir::MlirOp> result;

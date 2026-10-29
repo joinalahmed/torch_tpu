@@ -248,6 +248,7 @@ absl::Status PjrtBackend::InitializeInternal() {
     device_type = PjRtDeviceType::kTpu;
     plugin_name = kTpuPjrtName;
 
+    ApplyTpuVisibleDevices();
     if (const auto& world_size_or =
             GetRequiredIntegerEnvOnce<int, kWorldSizeEnvVar>();
         world_size_or.ok()) {

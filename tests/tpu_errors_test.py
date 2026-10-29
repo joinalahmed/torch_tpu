@@ -2421,6 +2421,50 @@ Please use clone() or contiguous() to copy the tensor before writing""",
     ):
       sync.is_materialized(x)
 
+  @et.why_tpu_only("Sync computation graph queries are TPU-specific.")
+  def test_computation_mlir_empty_tensors(self):
+    """Tests computation_mlir throws when tensors list is empty."""
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""_get_computation_mlir(): the tensor list must not be empty""",
+        message_reviewed_by="wan",
+    ):
+      sync.computation_mlir()
+
+  @et.why_tpu_only("Sync computation graph queries are TPU-specific.")
+  def test_computation_graphviz_empty_tensors(self):
+    """Tests computation_graphviz throws when tensors list is empty."""
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""_get_computation_graphviz(): the tensor list must not be empty""",
+        message_reviewed_by="wan",
+    ):
+      sync.computation_graphviz()
+
+  @et.why_tpu_only("Sync computation graph queries are TPU-specific.")
+  def test_computation_mlir_placeholder_tensor(self):
+    """Tests computation_mlir throws on a placeholder tensor."""
+    with execution_mode.set_eager_mode(EagerMode._INTERNAL_COMPILE_FX_GRAPH):
+      x = tpu_torch_compile.placeholder([4, 4], torch.float32, False)
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""_get_computation_mlir(): the tensors must not be placeholders""",
+        message_reviewed_by="wan",
+    ):
+      sync.computation_mlir(x)
+
+  @et.why_tpu_only("Sync computation graph queries are TPU-specific.")
+  def test_computation_graphviz_placeholder_tensor(self):
+    """Tests computation_graphviz throws on a placeholder tensor."""
+    with execution_mode.set_eager_mode(EagerMode._INTERNAL_COMPILE_FX_GRAPH):
+      x = tpu_torch_compile.placeholder([4, 4], torch.float32, False)
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""_get_computation_graphviz(): the tensors must not be placeholders""",
+        message_reviewed_by="wan",
+    ):
+      sync.computation_graphviz(x)
+
   @et.why_tpu_only("TODO: investigate why this is TPU-only.")
   def test_execute_output_shapes_rank_mismatch(self):
     with execution_mode.set_eager_mode(EagerMode._INTERNAL_COMPILE_FX_GRAPH):

@@ -1607,9 +1607,6 @@ class TestOps(op_testing.OpInfoTestBase):
   def test_avg_pool1d(self):
     self.do_test_op(
         "nn.functional.avg_pool1d",
-        # GPU goldens for avg_pool1d gradients have not been recorded yet.
-        # Gradients are checked against CPU in ops_unit_test.
-        check_grad=False,
         # GPU short-circuits empty-batch inputs in avg_pool1d before checking
         # dtype, whereas TorchTPU's ValidateAvgPool1dDtype rejects bool, uint8,
         # int8, int16, int32, and complex64 upfront.

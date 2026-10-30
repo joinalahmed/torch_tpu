@@ -4205,6 +4205,7 @@ class TestOps(op_testing.OpInfoTestBase):
         # TODO(b/553658275): support data sampling of integral and
         # half-precision float dtypes for SVD-based linear algebra ops.
         exclude_dtypes=INTEGRAL_DTYPES + (torch.half, torch.bfloat16),
+        skip_if=lambda variant, _: (op_testing.is_check_symbolic_shapes_mode()),
     )
 
   def test_linalg_qr(self):

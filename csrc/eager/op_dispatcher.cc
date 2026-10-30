@@ -349,7 +349,7 @@ absl::StatusOr<at::Tensor> MakeTensor(
     const at::Scalar& scalar, c10::optional<at::ScalarType> scalar_type_opt) {
   TT_ASSIGN_OR_RETURN(  // TODO: Test by forcing "scalar_tensor" to fail.
       DeviceBufferRef buffer, MakeBuffer(scalar, scalar_type_opt));
-  return MakeTensor(buffer);
+  return MakeTensor(std::move(buffer));
 }
 
 PromotedScalar PromoteScalar(at::Scalar scalar) {
@@ -359,7 +359,7 @@ PromotedScalar PromoteScalar(at::Scalar scalar) {
           -> absl::StatusOr<at::Tensor> {
         TT_ASSIGN_OR_RETURN(DeviceBufferRef buffer,
                             MakeBuffer(scalar, scalar_type_opt));
-        return MakeTensor(buffer);
+        return MakeTensor(std::move(buffer));
       },
       std::move(scalar));
 }

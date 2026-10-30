@@ -142,6 +142,11 @@ inline constexpr char kTorchTpuInternalHandshakeTimeoutSEnvVar[] =
 // not expected. Default is "true".
 inline constexpr char kTorchTpuInternalMaterializeCollectiveTensorsEnvVar[] =
     "TORCH_TPU_INTERNAL_MATERIALIZE_COLLECTIVE_TENSORS";
+// The PID of the root (parent) TorchTPU process in this process lineage. Set by
+// the root TorchTPU process and inherited by child processes so they can
+// detect that they are child processes.
+inline constexpr char kTorchTpuInternalRootPidEnvVar[] =
+    "TORCH_TPU_INTERNAL_ROOT_PID";
 // If set to "1", all traversals which contain exactly one distributed operation
 // (a "skinny collective") will be automatically pinned to the SparseCore.
 // This will not override manually specified stream pinning.
@@ -310,6 +315,7 @@ inline constexpr auto kEnvVarToStage =
         {kTorchTpuInternalHandshakeTimeoutSEnvVar, SymbolStage::InternalApi()},
         {kTorchTpuInternalMaterializeCollectiveTensorsEnvVar,
          SymbolStage::InternalApi()},
+        {kTorchTpuInternalRootPidEnvVar, SymbolStage::InternalImplementation()},
         {kTorchTpuInternalSkinnyScOffloadEnvVar, SymbolStage::InternalApi()},
         {kTorchTpuInternalSplitRngStateUpdate, SymbolStage::InternalApi()},
         {kTorchTpuInternalStorageAwarePlaceholdersEnvVar,

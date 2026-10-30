@@ -2009,4 +2009,23 @@ torch_tpu_cc_test(
     ],
 )
 
+torch_tpu_cc_library(
+    name = "process",
+    srcs = ["process.cc"],
+    hdrs = ["process.h"],
+    deps = [
+        ":env_vars",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+torch_tpu_cc_test(
+    name = "process_test",
+    srcs = ["process_test.cc"],
+    deps = [
+        ":process",
+        "//csrc/common:oss_test_main",
+    ],
+)
+
 torch_tpu_package_end()

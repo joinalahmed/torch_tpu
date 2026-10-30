@@ -19,9 +19,11 @@
 #include <string_view>
 
 #include "absl/log/absl_log.h"
+#include "absl/strings/str_cat.h"
 #include "csrc/common/env_vars.h"
 #include "csrc/common/error_utils.h"
 #include "csrc/common/libtpu_version.h"
+#include "csrc/common/process.h"
 #include "csrc/common/pybind_error_utils.h"
 #include "csrc/common/utils.h"
 #include "pybind11/stl.h"
@@ -130,12 +132,21 @@ std::optional<std::string> PyGetStringEnvOnce(
 }  // namespace
 
 TT_PYBIND11_MODULE(env, m) {
+  // Ensure the root TorchTPU PID is resolved and mirrored into Python's
+  // os.environ at module import time so child processes spawned from Python
+  // (e.g. via os.environ.copy()) inherit TORCH_TPU_INTERNAL_ROOT_PID.
+  PyBindModule::Import("os").attr("environ")[kTorchTpuInternalRootPidEnvVar] =
+      absl::StrCat(GetRootProcessPid());
   m.attr("IS_INTERNAL_TORCH_TPU") = static_cast<bool>(TT_IS_INTERNAL_TORCH_TPU);
 #if defined(NDEBUG)
   m.attr("TORCH_TPU_IS_OPTIMIZED_BUILD") = true;
 #else
   m.attr("TORCH_TPU_IS_OPTIMIZED_BUILD") = false;
 #endif
+  m.def("is_parent_process", &IsParentProcess,
+        "Returns True if the current process is the root (parent) TorchTPU "
+        "process, or False if it was forked or spawned from an ancestor "
+        "process that already initialized TorchTPU.");
   m.def("set_libtpu_version", &SetLibtpuVersion, pybind11::arg("version"));
   m.def("get_libtpu_version", &GetLibtpuVersionString);
   m.def("reset_libtpu_version_for_testing", &ResetLibtpuVersionForTesting);

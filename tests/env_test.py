@@ -19,6 +19,7 @@ import os
 
 from absl import flags
 from absl.testing import absltest
+import torch
 from torch_tpu import _loader
 from torch_tpu._internal import env
 from torch_tpu._internal.distributed import multiprocessing
@@ -29,6 +30,8 @@ from tests import subprocess_test_utils
 class TestMode(enum.Enum):
   """Enum for the different test modes."""
 
+  IS_PARENT_PROCESS_CHILD = "is_parent_process_child"
+  IS_PARENT_PROCESS_ROOT = "is_parent_process_root"
   LIBTPU_VERSION = "libtpu_version"
   LIBTPU_VERSION_NOT_LOADED = "libtpu_version_not_loaded"
   GET_BOOL_ENV_ONCE_UNSET = "get_bool_env_once_unset"
@@ -57,7 +60,26 @@ class EnvTest(seed_test_utils.RepeatableTest):
   def setUp(self) -> None:
     if _TEST_MODE.value is None:
       self.skipTest("test_mode flag not provided.")
+    if _TEST_MODE.value in (
+        TestMode.IS_PARENT_PROCESS_CHILD,
+        TestMode.IS_PARENT_PROCESS_ROOT,
+    ):
+      self.seed_in_setup = False
+      self.synchronize_tensors_in_tear_down = False
     super().setUp()
+
+  def test_is_parent_process_child(self) -> None:
+    self.assertFalse(torch.tpu.is_initialized())
+    self.assertFalse(env.is_parent_process())
+    self.assertFalse(torch.tpu.is_initialized())
+
+  def test_is_parent_process_root(self) -> None:
+    self.assertFalse(torch.tpu.is_initialized())
+    self.assertTrue(env.is_parent_process())
+    self.assertEqual(
+        os.environ.get("TORCH_TPU_INTERNAL_ROOT_PID"), str(os.getpid())
+    )
+    self.assertFalse(torch.tpu.is_initialized())
 
   def test_libtpu_version(self) -> None:
     _loader.load()
@@ -185,6 +207,19 @@ class ParentEnvTest(
     super().setUp()
     if _TEST_MODE.value is not None:
       self.skipTest("Skipping parent test in sub-test mode.")
+
+  def test_is_parent_process(self) -> None:
+    self.assertFalse(torch.tpu.is_initialized())
+    self.assertTrue(env.is_parent_process())
+    self.assertEqual(
+        os.environ.get("TORCH_TPU_INTERNAL_ROOT_PID"), str(os.getpid())
+    )
+    self.assertFalse(torch.tpu.is_initialized())
+    self.run_sub_test(TestMode.IS_PARENT_PROCESS_CHILD)
+    self.run_sub_test(
+        TestMode.IS_PARENT_PROCESS_ROOT,
+        env_removals=["TORCH_TPU_INTERNAL_ROOT_PID"],
+    )
 
   def test_libtpu_version(self) -> None:
     self.run_sub_test(TestMode.LIBTPU_VERSION)

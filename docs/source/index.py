@@ -75,6 +75,7 @@ TorchTPU is an open-source, native PyTorch backend for Google Cloud TPUs, develo
     - [<!--mkdocs::octicons-arrow-right-24:--> Muse Glimmer 30B inference](case_studies_muse_glimmer_30b_inference.py): Example of iterative decoding using real weights with static/dynamic KV cache.
     - [<!--mkdocs::octicons-arrow-right-24:--> Muse Glimmer 30B training](case_studies_muse_glimmer_30b_training.py): A training loop on a standalone implementation of Muse Glimmer 30B.
     - [<!--mkdocs::octicons-arrow-right-24:--> Using FSDP](case_studies_fsdp.py): The recommended approach to using FSDP for TorchTPU.
+    - [<!--mkdocs::octicons-arrow-right-24:--> Explainability as a performance lens](case_studies_explainability.py): Captum attribution across the execution modes, checked against CPU and profiled with XProf.
 
 - **<!--mkdocs::material-book-open-variant:{ .lg .middle }--> Analyze your workload**
 

@@ -44,6 +44,9 @@ For distributed training examples, refer to `examples/tensor_parallel/` and
 -   [fsdp/fsdp_to_simple_fsdp](fsdp/fsdp_to_simple_fsdp/README.md): Side-by-side
     comparison and migration guide from PyTorch FSDPv2 (`fully_shard`) to
     `SimpleFSDP` (`data_parallel`).
+-   [explainability](explainability/README.md): Captum Integrated Gradients on
+    a TPU in strict eager, DeferAndFuse, and `torch.compile` modes, checked
+    against CPU and profiled with XProf.
 
 ## Benchmarking
 

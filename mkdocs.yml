@@ -85,6 +85,7 @@ nav:
     - case_studies_muse_glimmer_30b_inference.md
     - case_studies_muse_glimmer_30b_training.md
     - case_studies_fsdp.md
+    - case_studies_explainability.md
   - Analyze your workload:
     - numerical_precision.md
     - performance_profiling_with_xprof.md

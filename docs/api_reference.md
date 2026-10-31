@@ -66,6 +66,48 @@ print(
 )
 ```
 
+## **Memory**
+
+TorchTPU implements PyTorch's device-agnostic memory APIs. There is no
+`torch.tpu.memory_allocated()`; use `torch.accelerator` as you would for CUDA.
+Values are bytes for the current device.
+
+<!-- mdformat off(reason: standard GFM table rendering in Critique and Code Search) -->
+| CUDA API | TPU / Accelerator API | Description |
+| :--- | :--- | :--- |
+| `torch.cuda.memory_allocated()` | `torch.accelerator.memory_allocated()` | Bytes held by live tensors on the device. |
+| `torch.cuda.max_memory_allocated()` | `torch.accelerator.max_memory_allocated()` | Peak of `memory_allocated()` since the start of the process or the last `reset_peak_memory_stats()`. |
+| `torch.cuda.reset_peak_memory_stats()` | `torch.accelerator.reset_peak_memory_stats()` | Resets the peak to the current allocation. |
+| `torch.cuda.mem_get_info()` | `torch.accelerator.get_memory_info()` | `(free, total)` HBM bytes of the device, as reported by the runtime. |
+| `torch.cuda.memory_stats()` | `torch.accelerator.memory_stats()` | Allocator statistics, with the same keys as CUDA (`allocated_bytes.all.peak`, ...). |
+| `torch.cuda.memory_reserved()` | `torch.accelerator.memory_reserved()` | Always 0: PJRT owns the device memory, so TorchTPU has no cache of reserved-but-free blocks. |
+| `torch.cuda.empty_cache()` | `torch.accelerator.empty_cache()` | No-op, for the same reason. |
+| `torch.cuda.reset_accumulated_memory_stats()` | `torch.accelerator.reset_accumulated_memory_stats()` | Not implemented; warns and returns. |
+<!-- mdformat on -->
+
+`memory_allocated()` counts device buffers that tensors still reference.
+Operations run asynchronously in every execution mode, and an operation's output
+buffer is allocated when the operation runs on the device, so call
+`torch.accelerator.synchronize()` before reading a value that must include the
+work issued so far. The static HBM capacity of the chip is also available
+without allocating anything, as
+`torch.tpu.get_device_properties().hbm_bytes_per_device`.
+
+```python
+import torch
+
+x = torch.randn(1024, 1024, device="tpu")
+torch.accelerator.synchronize()
+print(f"allocated: {torch.accelerator.memory_allocated() / 2**20:.1f} MiB")
+print(f"peak:      {torch.accelerator.max_memory_allocated() / 2**20:.1f} MiB")
+free, total = torch.accelerator.get_memory_info()
+print(f"free HBM:  {free / 2**30:.1f} of {total / 2**30:.1f} GiB")
+```
+
+For how memory is used over time, including the HBM footprint of each compiled
+program, see the Memory Profile tool in
+[Performance Profiling with XProf](performance_profiling_with_xprof.md).
+
 ## **Random Number Generation (RNG)**
 
 <!-- mdformat off(reason: standard GFM table rendering in Critique and Code Search) -->

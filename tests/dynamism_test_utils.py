@@ -301,6 +301,9 @@ DYNAMISM_DENY_LISTS: DenyList = {
     },
     # TODO: b/449736443 - Support bounded dimensions in these lowerings.
     "the result has wrong values": {
+        # clamp.Tensor (tensor min/max) mismatches the golden output in 80% of
+        # the elements when dim 0, 1 or 2 is bounded; the scalar variants pass.
+        "clamp": ALL_MODES,
         # TODO: b/566327914 - With dim 0 bounded, the result matches the
         # transposed golden output.
         "nn.functional.hardtanh": {EAGER},
@@ -371,29 +374,17 @@ DYNAMISM_DENY_LISTS: DenyList = {
         "sparse_coo_zero_": ALL_MODES,
     },
     "untriaged: invalid result": {
-        # TODO: fix clamp() returning enormous errors or nans when dynamism is
-        # enabled.
-        "clamp": ALL_MODES,
+        # TODO: fix clamp_min() returning enormous errors or nans when dynamism
+        # is enabled.
         "clamp_min": ALL_MODES,
-        "eq": ALL_MODES,
         "flip": ALL_MODES,
         "index_put": ALL_MODES,  # garbage data
         "kron": ALL_MODES,
         "logical_and": ALL_MODES,
-        "maximum": ALL_MODES,
-        "ne": ALL_MODES,
-        "neg": ALL_MODES,
         "nn.functional.leaky_relu": ALL_MODES,
-        "pow": ALL_MODES,
-        "remainder": ALL_MODES,
-        "round": ALL_MODES,
         "sgn": ALL_MODES,
-        "sign": ALL_MODES,
-        "sinh": ALL_MODES,
-        "sub": ALL_MODES,
         "take": ALL_MODES,
         "tan": ALL_MODES,
-        "trunc": ALL_MODES,
         "var": ALL_MODES,
         "xlogy": ALL_MODES,
     },

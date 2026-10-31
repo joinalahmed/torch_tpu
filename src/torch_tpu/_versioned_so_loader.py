@@ -211,12 +211,39 @@ class ExtensionProxyLoader(importlib.abc.Loader):
     try:
       spec.name = self._unversioned_name
       return self._real_loader.create_module(spec)
+    except ImportError as e:
+      raise self._describe_failure(e) from e
     finally:
       spec.name = original_name
 
   def exec_module(self, module):
     if hasattr(self._real_loader, "exec_module"):
-      self._real_loader.exec_module(module)
+      try:
+        self._real_loader.exec_module(module)
+      except ImportError as e:
+        raise self._describe_failure(e) from e
+
+  def _describe_failure(self, error: ImportError) -> ImportError:
+    """Returns an ImportError that names the glue and the running PyTorch.
+
+    The dynamic loader reports a failed extension load as an undefined symbol
+    or a missing library, without saying which PyTorch the glue was built for
+    or which one is installed; mismatches are the usual cause.
+    """
+    glue_version = _glue_suffix(f"{self._versioned_name}.so")
+    glue_version = (
+        glue_version.replace("_", ".") if glue_version else "an unknown version"
+    )
+    running = installed_torch_version() or "an unknown version"
+    return ImportError(
+        f"torch_tpu failed to load its extension module {self._versioned_name}"
+        f" (built for PyTorch {glue_version}) with PyTorch {running} installed."
+        " torch_tpu wheels only support the PyTorch releases they were built"
+        " against; install a matching torch and torch_tpu pair, or build"
+        f" torch_tpu from source for this PyTorch. Underlying error: {error}",
+        name=getattr(error, "name", None),
+        path=getattr(error, "path", None),
+    )
 
   def __getattr__(self, item):
     return getattr(self._real_loader, item)

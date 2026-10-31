@@ -427,6 +427,54 @@ class PathEntryFinderAndHookTest(seed_test_utils.RepeatableTest):
     proxy.exec_module(mod)
     self.assertIs(real_loader.executed_module, mod)
 
+  @parameterized.named_parameters(
+      ("create_module", "create_module"),
+      ("exec_module", "exec_module"),
+  )
+  def test_extension_proxy_loader_describes_failed_load(
+      self, failing_method: str
+  ) -> None:
+    class FakeRealLoader:
+
+      def create_module(
+          self, spec: importlib.machinery.ModuleSpec
+      ) -> types.ModuleType:
+        if failing_method == "create_module":
+          raise ImportError(
+              "env_2_12_0.so: undefined symbol: _ZN3c10x",
+              name=spec.name,
+              path="/pkg/env_2_12_0.so",
+          )
+        return types.ModuleType(spec.name)
+
+      def exec_module(self, module: types.ModuleType) -> None:
+        if failing_method == "exec_module":
+          raise ImportError("libtorch.so: cannot open shared object file")
+
+    proxy = loader.ExtensionProxyLoader(
+        FakeRealLoader(), "fake_tt._internal.env", "fake_tt._internal.env_2_12_0"
+    )
+    spec = importlib.machinery.ModuleSpec("fake_tt._internal.env_2_12_0", proxy)
+    with mock.patch.object(
+        loader, "installed_torch_version", return_value="2.15.0+cpu"
+    ):
+      with self.assertRaises(ImportError) as ctx:
+        mod = proxy.create_module(spec)
+        proxy.exec_module(mod)
+
+    message = str(ctx.exception)
+    self.assertIn("fake_tt._internal.env_2_12_0", message)
+    self.assertIn("built for PyTorch 2.12.0", message)
+    self.assertIn("PyTorch 2.15.0+cpu installed", message)
+    self.assertIsInstance(ctx.exception.__cause__, ImportError)
+    self.assertIn(
+        str(ctx.exception.__cause__), message, "underlying error is quoted"
+    )
+    # `spec.name` is restored even when create_module fails.
+    self.assertEqual(spec.name, "fake_tt._internal.env_2_12_0")
+    if failing_method == "create_module":
+      self.assertEqual(ctx.exception.path, "/pkg/env_2_12_0.so")
+
 
 if __name__ == "__main__":
   absltest.main()

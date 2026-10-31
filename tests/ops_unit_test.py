@@ -12877,6 +12877,155 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
 
     self.assert_close_tpu_vs_cpu(test_broadcasting_fn)
 
+  @parameterized.product(
+      loss=("smooth_l1_loss", "huber_loss"),
+      reduction=("none", "mean", "sum"),
+      threshold=(0.5, 1.0, 2.5),
+      dtype=(torch.float32, torch.bfloat16),
+  )
+  def test_piecewise_l1_l2_loss(self, loss, reduction, threshold, dtype):
+    """smooth_l1_loss and huber_loss forward and backward vs CPU."""
+    kwarg = "beta" if loss == "smooth_l1_loss" else "delta"
+    fn = getattr(torch.nn.functional, loss)
+
+    def compute(device):
+      torch.manual_seed(0)
+      x = torch.randn(4, 6, dtype=dtype).to(device).requires_grad_()
+      # Spread the differences across both sides of the threshold.
+      y = (torch.randn(4, 6, dtype=dtype) * 2).to(device)
+      out = fn(x, y, reduction=reduction, **{kwarg: threshold})
+      out.sum().backward()
+      return out, x.grad
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_smooth_l1_loss_beta_zero_is_l1(self):
+    def compute(device):
+      x = torch.tensor([[-2.0, -0.5, 0.0, 0.5, 2.0]], device=device)
+      x.requires_grad_()
+      y = torch.zeros_like(x)
+      out = torch.nn.functional.smooth_l1_loss(x, y, beta=0.0)
+      out.backward()
+      return out, x.grad
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_piecewise_loss_broadcast_and_out(self):
+    def compute(device):
+      x = torch.arange(6.0, device=device).reshape(2, 3)
+      y = torch.tensor([1.0, 2.0, 3.0], device=device)
+      out = torch.empty((), device=device)
+      torch.ops.aten.huber_loss.out(x, y, 1, 1.5, out=out)
+      return (
+          torch.nn.functional.smooth_l1_loss(x, y, reduction="none"),
+          torch.nn.functional.huber_loss(x, y, delta=1.5),
+          out,
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_piecewise_loss_invalid_threshold(self):
+    x = torch.zeros(3, device="tpu")
+    with self.assertRaisesRegex(RuntimeError, "negative values for beta"):
+      torch.nn.functional.smooth_l1_loss(x, x, beta=-1.0)
+    with self.assertRaisesRegex(RuntimeError, "non-positive values for delta"):
+      torch.nn.functional.huber_loss(x, x, delta=0.0)
+
+  @parameterized.named_parameters(
+      ("logaddexp", torch.logaddexp), ("logaddexp2", torch.logaddexp2)
+  )
+  def test_logaddexp(self, fn):
+    inf = float("inf")
+    a_data = [0.0, 1.0, -1.0, 100.0, -100.0, inf, -inf, inf, 3.0]
+    b_data = [0.0, -1.0, 1.0, -100.0, 100.0, inf, -inf, -inf, 0.0]
+
+    def compute(device):
+      a = torch.tensor(a_data, device=device)
+      b = torch.tensor(b_data, device=device)
+      out = torch.empty_like(a)
+      fn(a, b, out=out)
+      bcast = fn(a.reshape(3, 3), b[:3])
+      return fn(a, b), out, bcast
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_nansum(self):
+    def compute(device):
+      x = torch.tensor(
+          [[1.0, float("nan"), 2.0], [float("nan"), float("nan"), 3.0]],
+          device=device,
+      )
+      i = torch.tensor([[1, 2], [3, 4]], device=device)
+      out = torch.empty(2, device=device)
+      torch.nansum(x, dim=1, out=out)
+      return (
+          torch.nansum(x),
+          torch.nansum(x, dim=0),
+          torch.nansum(x, dim=1, keepdim=True),
+          torch.nansum(x, dtype=torch.float64).float(),
+          torch.nansum(i),
+          out,
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_std_mean(self):
+    def compute(device):
+      torch.manual_seed(0)
+      x = torch.randn(3, 4, 5).to(device)
+      return (
+          torch.std_mean(x),
+          torch.std_mean(x, dim=1),
+          torch.std_mean(x, dim=(0, 2), keepdim=True),
+          torch.std_mean(x, dim=1, correction=0),
+          torch.std_mean(x.to(torch.bfloat16), dim=2),
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_trace(self):
+    def compute(device):
+      torch.manual_seed(0)
+      square = torch.randn(4, 4).to(device).requires_grad_()
+      tall = torch.arange(12, device=device).reshape(4, 3)
+      t = torch.trace(square)
+      t.backward()
+      return t, square.grad, torch.trace(tall), torch.trace(tall.float())
+
+    self.assert_close_tpu_vs_cpu(compute)
+    with self.assertRaisesRegex(RuntimeError, "expected a matrix"):
+      torch.trace(torch.zeros(3, device="tpu"))
+
+  def test_addbmm(self):
+    def compute(device):
+      torch.manual_seed(0)
+      m = torch.randn(3, 5).to(device)
+      b1 = torch.randn(4, 3, 2).to(device).requires_grad_()
+      b2 = torch.randn(4, 2, 5).to(device)
+      out = torch.addbmm(m, b1, b2, beta=0.5, alpha=2.0)
+      out.sum().backward()
+      out_tensor = torch.empty(3, 5, device=device)
+      torch.addbmm(m, b1.detach(), b2, out=out_tensor)
+      inplace = m.clone().addbmm_(b1.detach(), b2)
+      empty_batch = torch.addbmm(
+          m, torch.zeros(0, 3, 2, device=device), torch.zeros(0, 2, 5, device=device)
+      )
+      return out, b1.grad, out_tensor, inplace, empty_batch
+
+    # The default matmul precision rounds float32 inputs to bfloat16.
+    old_precision = torch.get_float32_matmul_precision()
+    torch.set_float32_matmul_precision("highest")
+    try:
+      self.assert_close_tpu_vs_cpu(compute)
+    finally:
+      torch.set_float32_matmul_precision(old_precision)
+    with self.assertRaisesRegex(RuntimeError, "batch1 must be a 3D tensor"):
+      torch.addbmm(
+          torch.zeros(3, 5, device="tpu"),
+          torch.zeros(3, 2, device="tpu"),
+          torch.zeros(4, 2, 5, device="tpu"),
+      )
+
   def test_xlogy_scalar_and_cpu_scalar_tensors(self):
     """Tests xlogy scalar overloads and 0-D CPU scalar tensors."""
     # Scalar self

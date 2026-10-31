@@ -141,6 +141,7 @@ torch_tpu_cc_library(
     srcs = ["std_aten_kernels.cc"],
     hdrs = ["std_aten_kernels.h"],
     deps = [
+        ":mean_aten_kernels",
         ":reduction_utils",
         ":reductions",
         ":sum",
@@ -151,6 +152,7 @@ torch_tpu_cc_library(
         "//csrc/common:error_utils",
         "//csrc/common:fixed_size_span",
         "//csrc/common:warnings",
+        "//csrc/eager:device_buffer",
         "//csrc/eager:op_dispatcher",
         "//csrc/eager:tensor_to_buffer",
         "//csrc/ops:binary",

@@ -46,6 +46,7 @@
 #include "csrc/common/to_string.h"
 #include "csrc/common/warnings.h"
 #include "csrc/ops/a_min_max/a_min_max_aten_kernels.h"
+#include "csrc/ops/addbmm/addbmm_aten_kernels.h"
 #include "csrc/ops/addcdiv/addcdiv_aten_kernels.h"
 #include "csrc/ops/addcmul/addcmul_aten_kernels.h"
 #include "csrc/ops/addmm/addmm_aten_kernels.h"
@@ -156,6 +157,7 @@
 #include "csrc/ops/linalg/vector_norm/aten_vector_norm_kernels.h"
 #include "csrc/ops/linear/linear_aten_kernels.h"
 #include "csrc/ops/linspace/linspace_aten_kernels.h"
+#include "csrc/ops/logaddexp/logaddexp_aten_kernels.h"
 #include "csrc/ops/logcumsumexp/logcumsumexp_aten_kernels.h"
 #include "csrc/ops/logical/logical_aten_kernels.h"
 #include "csrc/ops/logit/logit_aten_kernels.h"
@@ -168,6 +170,7 @@
 #include "csrc/ops/mse_loss/mse_loss_aten_kernels.h"
 #include "csrc/ops/multinomial/multinomial_aten_kernels.h"
 #include "csrc/ops/nan_to_num/nan_to_num_aten_kernels.h"
+#include "csrc/ops/nansum/nansum_aten_kernels.h"
 #include "csrc/ops/native_batch_norm/native_batch_norm_aten_kernels.h"
 #include "csrc/ops/native_multi_head_attention/native_multi_head_attention_aten_kernels.h"
 #include "csrc/ops/native_norm/native_norm_aten_kernels.h"
@@ -211,6 +214,7 @@
 #include "csrc/ops/silu/silu_aten_kernels.h"
 #include "csrc/ops/slice_backward/slice_backward_aten_kernels.h"
 #include "csrc/ops/slice_scatter/slice_scatter_aten_kernels.h"
+#include "csrc/ops/smooth_l1_loss/smooth_l1_loss_aten_kernels.h"
 #include "csrc/ops/softmax/_masked_softmax_aten_kernels.h"
 #include "csrc/ops/softmax/softmax_aten_kernels.h"
 #include "csrc/ops/softplus/softplus_aten_kernels.h"
@@ -225,6 +229,7 @@
 #include "csrc/ops/threshold/threshold_aten_kernels.h"
 #include "csrc/ops/to_copy/to_copy_aten_kernels.h"
 #include "csrc/ops/topk/topk_aten_kernels.h"
+#include "csrc/ops/trace/trace_aten_kernels.h"
 #include "csrc/ops/transformer_encoder_layer_fwd/_transformer_encoder_layer_fwd_aten_kernels.h"
 #include "csrc/ops/triangular/triangular_aten_kernels.h"
 #include "csrc/ops/tril_indices/tril_indices_aten_kernels.h"
@@ -392,6 +397,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kAddReluTensor>(m, AtenAddReluTensor);
   ImplStable<OpName::kAddRelu_Scalar>(m, AtenAddRelu_Scalar);
   ImplStable<OpName::kAddRelu_Tensor>(m, AtenAddRelu_Tensor);
+  ImplStable<OpName::kAddbmm>(m, AtenAddbmm);
+  ImplStable<OpName::kAddbmmOut>(m, AtenAddbmmOut);
+  ImplStable<OpName::kAddbmm_>(m, AtenAddbmm_);
   ImplStable<OpName::kAddcdivOut>(m, AtenAddcdivOut);
   ImplStable<OpName::kAddcmulOut>(m, AtenAddcmulOut);
   ImplStable<OpName::kAddmmActivationOut>(m, AtenAddmmActivationOut);
@@ -767,6 +775,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
       m, AtenHasCompatibleShallowCopyType);
   ImplStable<OpName::kHistc>(m, AtenHistc);
   ImplStable<OpName::kHistcOut>(m, AtenHistcOut);
+  ImplStable<OpName::kHuberLoss>(m, AtenHuberLoss);
+  ImplStable<OpName::kHuberLossBackwardOut>(m, AtenHuberLossBackwardOut);
+  ImplStable<OpName::kHuberLossOut>(m, AtenHuberLossOut);
   ImplStable<OpName::kIlshiftScalar>(m, AtenIlshiftScalar);
   ImplStable<OpName::kIlshiftTensor>(m, AtenIlshiftTensor);
   ImplStable<OpName::kIm2Col>(m, AtenIm2Col);
@@ -829,6 +840,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kLogSoftmaxBackwardDataOut>(m,
                                                  AtenLogSoftmaxBackwardDataOut);
   ImplStable<OpName::kLogSoftmaxOut>(m, AtenLogSoftmaxOut);
+  ImplStable<OpName::kLogaddexp2Out>(m, AtenLogaddexp2Out);
+  ImplStable<OpName::kLogaddexpOut>(m, AtenLogaddexpOut);
   ImplStable<OpName::kLogcumsumexp>(m, AtenLogcumsumexp);
   ImplStable<OpName::kLogcumsumexpOut>(m, AtenLogcumsumexpOut);
   ImplStable<OpName::kLogicalAndOut>(m, AtenLogicalAndOut);
@@ -884,6 +897,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kMultinomial>(m, AtenMultinomial);
   ImplStable<OpName::kMultinomialOut>(m, AtenMultinomialOut);
   ImplStable<OpName::kNanToNumOut>(m, AtenNanToNumOut);
+  ImplStable<OpName::kNansum>(m, AtenNansum);
+  ImplStable<OpName::kNansumOut>(m, AtenNansumOut);
   ImplStable<OpName::kNativeBatchNorm>(m, AtenNativeBatchNorm);
   ImplStable<OpName::kNativeBatchNormBackward>(m, AtenNativeBatchNormBackward);
   ImplStable<OpName::kNativeBatchNormLegit>(m, AtenNativeBatchNormLegit);
@@ -1049,6 +1064,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kSliceBackward>(m, AtenSliceBackward);
   ImplStable<OpName::kSliceScatter>(m, AtenSliceScatter);
   ImplStable<OpName::kSliceScatterOut>(m, AtenSliceScatterOut);
+  ImplStable<OpName::kSmoothL1LossBackwardGradInput>(
+      m, AtenSmoothL1LossBackwardGradInput);
+  ImplStable<OpName::kSmoothL1LossOut>(m, AtenSmoothL1LossOut);
   ImplStable<OpName::kSoftmaxBackwardDataOut>(m, AtenSoftmaxBackwardDataOut);
   ImplStable<OpName::kSoftmaxOut>(m, AtenSoftmaxOut);
   ImplStable<OpName::kSoftplusBackwardGradInput>(m,
@@ -1061,6 +1079,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kStackOut>(m, AtenStackOut);
   ImplStable<OpName::kStdCorrection>(m, AtenStd);
   ImplStable<OpName::kStdCorrectionOut>(m, AtenStdOut);
+  ImplStable<OpName::kStdMeanCorrection>(m, AtenStdMeanCorrection);
   ImplStable<OpName::kSubOut>(m, AtenSubOut);
   ImplStable<OpName::kSumIntListOut>(m, AtenSumIntListOut);
   ImplStable<OpName::kTake>(m, AtenTake);
@@ -1081,6 +1100,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kThresholdOut>(m, AtenThresholdOut);
   ImplStable<OpName::kToCopy>(m, AtenToCopy);
   ImplStable<OpName::kTopkValues>(m, AtenTopKValues);
+  ImplStable<OpName::kTrace>(m, AtenTrace);
   ImplStable<OpName::kTransformerEncoderLayerFwd>(
       m, AtenTransformerEncoderLayerFwd);
   ImplStable<OpName::kTrilIndices>(m, AtenTrilIndices);

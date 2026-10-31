@@ -733,7 +733,10 @@ torch_tpu_cc_library(
         # Nothing references its symbols.
         "//csrc/experimental/precompiled_kernels:kernel_registration",  # buildcleaner: keep
         "//csrc/common:to_string",
+        "//csrc/ops/addbmm:addbmm_aten_kernels",
         "//csrc/ops/has_compatible_shallow_copy_type:has_compatible_shallow_copy_type_aten_kernels",
+        "//csrc/ops/logaddexp:logaddexp_aten_kernels",
+        "//csrc/ops/nansum:nansum_aten_kernels",
         "//csrc/ops/pooling",
         "//csrc/ops/repeat_interleave:repeat_interleave_aten_kernels",
         "//csrc/ops:assertion_aten_kernels",
@@ -902,6 +905,7 @@ torch_tpu_cc_library(
         "//csrc/ops/silu:silu_aten_kernels",
         "//csrc/ops/slice_backward:slice_backward_aten_kernels",
         "//csrc/ops/slice_scatter:slice_scatter_aten_kernels",
+        "//csrc/ops/smooth_l1_loss:smooth_l1_loss_aten_kernels",
         "//csrc/ops/softmax:_masked_softmax_aten_kernels",
         "//csrc/ops/softmax:softmax_aten_kernels",
         "//csrc/ops/softplus:softplus_aten_kernels",
@@ -916,6 +920,7 @@ torch_tpu_cc_library(
         "//csrc/ops/threshold:threshold_aten_kernels",
         "//csrc/ops/to_copy",
         "//csrc/ops/topk:topk_aten_kernels",
+        "//csrc/ops/trace:trace_aten_kernels",
         "//csrc/ops/transformer_encoder_layer_fwd:transformer_encoder_layer_fwd_aten_kernels",
         "//csrc/ops/triangular:triangular_aten_kernels",
         "//csrc/ops/tril_indices:tril_indices_aten_kernels",

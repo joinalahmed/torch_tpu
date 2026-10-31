@@ -49,6 +49,9 @@ enum class OpName {
   kAddRelu_Tensor,
   kAddTensor,
   kAdd_Tensor,
+  kAddbmm,
+  kAddbmmOut,
+  kAddbmm_,
   kAddcdivOut,
   kAddcmulOut,
   kAddmm,
@@ -466,6 +469,9 @@ enum class OpName {
   kHasCompatibleShallowCopyType,
   kHistc,
   kHistcOut,
+  kHuberLoss,
+  kHuberLossBackwardOut,
+  kHuberLossOut,
   kIlshiftScalar,
   kIlshiftTensor,
   kIm2Col,
@@ -532,6 +538,8 @@ enum class OpName {
   kLogSigmoidForwardOut,
   kLogSoftmaxBackwardDataOut,
   kLogSoftmaxOut,
+  kLogaddexp2Out,
+  kLogaddexpOut,
   kLogcumsumexp,
   kLogcumsumexpOut,
   kLogicalAndOut,
@@ -599,6 +607,8 @@ enum class OpName {
   kMultinomial,
   kMultinomialOut,
   kNanToNumOut,
+  kNansum,
+  kNansumOut,
   kNativeBatchNorm,
   kNativeBatchNormBackward,
   kNativeBatchNormLegit,
@@ -774,6 +784,8 @@ enum class OpName {
   kSliceBackward,
   kSliceScatter,
   kSliceScatterOut,
+  kSmoothL1LossBackwardGradInput,
+  kSmoothL1LossOut,
   kSoftmaxBackwardDataOut,
   kSoftmaxOut,
   kSoftplusBackwardGradInput,
@@ -800,6 +812,7 @@ enum class OpName {
   kStackOut,
   kStdCorrection,
   kStdCorrectionOut,
+  kStdMeanCorrection,
   kSub,
   kSubOut,
   kSubTensor,
@@ -828,6 +841,7 @@ enum class OpName {
   kTorchTpuInternalZeroSize,
   kTorchTpuOptimizationBarrier,
   kTorchTpuStorageAllocate,
+  kTrace,
   kTransformerEncoderLayerFwd,
   kTrilIndices,
   kTrilOut,
@@ -946,6 +960,12 @@ ToString(  // NOLINT(google-readability-function-size)
       return "add.Tensor";
     case OpName::kAdd_Tensor:
       return "add_.Tensor";
+    case OpName::kAddbmm:
+      return "addbmm";
+    case OpName::kAddbmmOut:
+      return "addbmm.out";
+    case OpName::kAddbmm_:
+      return "addbmm_";
     case OpName::kAddcdivOut:
       return "addcdiv.out";
     case OpName::kAddcmulOut:
@@ -1780,6 +1800,12 @@ ToString(  // NOLINT(google-readability-function-size)
       return "histc";
     case OpName::kHistcOut:
       return "histc.out";
+    case OpName::kHuberLoss:
+      return "huber_loss";
+    case OpName::kHuberLossBackwardOut:
+      return "huber_loss_backward.out";
+    case OpName::kHuberLossOut:
+      return "huber_loss.out";
     case OpName::kIlshiftScalar:
       return "__ilshift__.Scalar";
     case OpName::kIlshiftTensor:
@@ -1912,6 +1938,10 @@ ToString(  // NOLINT(google-readability-function-size)
       return "_log_softmax_backward_data.out";
     case OpName::kLogSoftmaxOut:
       return "_log_softmax.out";
+    case OpName::kLogaddexp2Out:
+      return "logaddexp2.out";
+    case OpName::kLogaddexpOut:
+      return "logaddexp.out";
     case OpName::kLogcumsumexp:
       return "_logcumsumexp";
     case OpName::kLogcumsumexpOut:
@@ -2046,6 +2076,10 @@ ToString(  // NOLINT(google-readability-function-size)
       return "multinomial.out";
     case OpName::kNanToNumOut:
       return "nan_to_num.out";
+    case OpName::kNansum:
+      return "nansum";
+    case OpName::kNansumOut:
+      return "nansum.out";
     case OpName::kNativeBatchNorm:
       return "native_batch_norm";
     case OpName::kNativeBatchNormBackward:
@@ -2400,6 +2434,10 @@ ToString(  // NOLINT(google-readability-function-size)
       return "slice_scatter";
     case OpName::kSliceScatterOut:
       return "slice_scatter.out";
+    case OpName::kSmoothL1LossBackwardGradInput:
+      return "smooth_l1_loss_backward.grad_input";
+    case OpName::kSmoothL1LossOut:
+      return "smooth_l1_loss.out";
     case OpName::kSoftmaxBackwardDataOut:
       return "_softmax_backward_data.out";
     case OpName::kSoftmaxOut:
@@ -2452,6 +2490,8 @@ ToString(  // NOLINT(google-readability-function-size)
       return "std.correction";
     case OpName::kStdCorrectionOut:
       return "std.correction_out";
+    case OpName::kStdMeanCorrection:
+      return "std_mean.correction";
     case OpName::kSub:
       return "sub";
     case OpName::kSubOut:
@@ -2508,6 +2548,8 @@ ToString(  // NOLINT(google-readability-function-size)
       return "_optimization_barrier";
     case OpName::kTorchTpuStorageAllocate:
       return "storage.allocate";
+    case OpName::kTrace:
+      return "trace";
     case OpName::kTransformerEncoderLayerFwd:
       return "_transformer_encoder_layer_fwd";
     case OpName::kTrilIndices:

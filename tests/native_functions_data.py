@@ -247,7 +247,6 @@ UNREGISTERED_OPS = frozenset([
     'linalg_polar.out',
     'log_normal_',
     'logaddexp.out',
-    'logaddexp2.out',
     'logspace.out',
     'lstm_mps_backward',
     'matmul_backward',  # No need to register as matmul is an optional op

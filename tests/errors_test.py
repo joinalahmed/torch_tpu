@@ -9117,13 +9117,16 @@ Supported combinations for non-constant padding:
       torch.nn.functional.smooth_l1_loss(x, x)
 
   def test_smooth_l1_loss_negative_beta(self):
+    # The functional op checks beta before dispatching, so call the out
+    # variant to reach the kernel's own check.
     x = torch.zeros(2, device=et.device())
+    out = torch.empty((), device=et.device())
     with et.assert_raises_message(
         RuntimeError,
         tpu="""smooth_l1_loss(): smooth_l1_loss does not support negative values for beta.""",
         gpu="""smooth_l1_loss does not support negative values for beta.""",
     ):
-      torch.nn.functional.smooth_l1_loss(x, x, beta=-1.0)
+      torch.ops.aten.smooth_l1_loss.out(x, x, 1, -1.0, out=out)
 
   def test_embedding_renorm_float(self):
     inp = torch.ones(3, 2, device=et.device(), dtype=torch.int64)

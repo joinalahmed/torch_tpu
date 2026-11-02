@@ -16,11 +16,14 @@
 
 #include "csrc/ops/reductions/std_aten_kernels.h"
 
+#include <array>
 #include <complex>
 #include <cstdint>
 #include <optional>
+#include <tuple>
 #include <utility>
 
+#include "ATen/OpMathType.h"
 #include "ATen/core/ATen_fwd.h"
 #include "ATen/core/TensorBody.h"
 #include "absl/status/statusor.h"
@@ -42,6 +45,7 @@
 #include "csrc/ops/op_builder_utils.h"
 #include "csrc/ops/op_names.h"
 #include "csrc/ops/python_context.h"
+#include "csrc/ops/reductions/mean_aten_kernels.h"
 #include "csrc/ops/reductions/reduction_utils.h"
 #include "csrc/ops/reductions/reductions.h"
 #include "csrc/ops/reductions/sum.h"
@@ -250,6 +254,135 @@ at::Tensor& AtenStdOut(const at::Tensor& self,
              .computation_dtype = computation_dtype,
              .op_param_cache_keys = std::move(param_keys)})));
         return out;
+      });
+}
+
+std::tuple<at::Tensor, at::Tensor> AtenStdMeanCorrection(
+    const at::Tensor& self, c10::OptionalArrayRef<int64_t> dim,
+    const std::optional<at::Scalar>& correction, bool keep_dim) {
+  PromotedScalar promoted_correction =
+      PromoteScalar(correction.value_or(at::Scalar(1.0)));
+
+  TT_KERNEL(
+      OpName::kStdMeanCorrection, param_keys,
+      (self, dim, promoted_correction, keep_dim), {
+        const c10::ScalarType self_scalar_dtype = self.scalar_type();
+        TT_THROW_IF_ERROR(ValidateFloatOrComplex(self_scalar_dtype));
+        // The mean keeps the input dtype; the std of a complex input is real.
+        const c10::ScalarType std_scalar_dtype =
+            c10::toRealValueType(self_scalar_dtype);
+
+        const ReductionMode reduction_mode =
+            keep_dim ? ReductionMode::kKeepDims : ReductionMode::kDropDims;
+        TT_ASSIGN_OR_THROW(Dimensions canonical_dims,
+                           CanonicalizeDims(self, dim));
+        const Dimensions output_dims = GetSizesAfterReduction(
+            self.sizes(), reduction_mode, canonical_dims);
+
+        TT_ASSIGN_OR_THROW(const mlir::ElementType std_dtype_mlir,
+                           internal::ToElementType(std_scalar_dtype));
+        TT_ASSIGN_OR_THROW(const mlir::ElementType self_dtype_mlir,
+                           internal::ToElementType(self_scalar_dtype));
+
+        // Like var_mean, compute BF16 and F16 inputs in F32.
+        std::optional<mlir::ElementType> computation_dtype = std::nullopt;
+        const bool upcast_std = (std_dtype_mlir == mlir::ElementType::BF16 ||
+                                 std_dtype_mlir == mlir::ElementType::F16);
+        if (upcast_std) {
+          computation_dtype = mlir::ElementType::F32;
+        }
+
+        TT_ASSIGN_OR_THROW(const at::Tensor correction_tensor,
+                           promoted_correction.GetTensor(
+                               at::toOpMathType(std_scalar_dtype)));
+        TT_ASSIGN_OR_THROW(const int64_t reduction_size,
+                           GetReductionFactor(self, dim));
+        const double correction_val = promoted_correction.scalar().toDouble();
+        WarnIfInvalidCorrection(OpName::kStdMeanCorrection, correction_val,
+                                reduction_size);
+
+        auto std_mean_builder =
+            [canonical_dims = std::move(canonical_dims), reduction_mode,
+             reduction_size, keep_dim](FixedSizeSpan<mlir::MlirOp, 2> inputs)
+            -> absl::StatusOr<std::array<mlir::MlirOp, 2>> {
+          auto& [self_op, correction_op] = inputs;
+          mlir::MlirBuilder& builder = self_op.getBuilder();
+
+          TT_ASSIGN_OR_RETURN(
+              const mlir::ElementType mean_type,
+              ConvertTo<mlir::ElementType>(
+                  GetTensorTypeOrDie(self_op).getElementType()));
+          TT_ASSIGN_OR_RETURN(
+              const mlir::ElementType var_type,
+              ConvertTo<mlir::ElementType>(
+                  GetTensorTypeOrDie(correction_op).getElementType()));
+
+          // mean_keepdims = ReduceSum(self, dim, keep_dims=true) / n
+          TT_ASSIGN_OR_RETURN(
+              const mlir::MlirOp mean_keepdims,
+              BuildMeanShlo(self_op, canonical_dims, ReductionMode::kKeepDims,
+                            mean_type));
+
+          // The mean output drops the reduced dimensions unless keep_dim.
+          mlir::MlirOp mean_out = mean_keepdims;
+          if (!keep_dim) {
+            TT_ASSIGN_OR_RETURN(mean_out,
+                                Squeeze(mean_keepdims, canonical_dims));
+          }
+
+          // diff = self - mean_keepdims
+          TT_ASSIGN_OR_RETURN(const mlir::MlirOp diff,
+                              BuildSubShlo(self_op, mean_keepdims));
+
+          // squared_diff = diff * conj(diff)
+          TT_ASSIGN_OR_RETURN(const mlir::MlirOp conj_diff,
+                              BuildConjPhysicalShlo(diff));
+          TT_ASSIGN_OR_RETURN(const mlir::MlirOp squared_diff,
+                              BuildMulShlo(diff, conj_diff));
+
+          // sum_sq = ReduceSum(squared_diff, dim, keep_dims=keep_dim)
+          TT_ASSIGN_OR_RETURN(const mlir::MlirOp sum_sq,
+                              BuildSumShlo(squared_diff, canonical_dims,
+                                           reduction_mode, var_type));
+
+          // denom = max(reduction_size - correction, 0)
+          // If reduction_size == 0, degrees of freedom is 0 and the variance
+          // is NaN.
+          mlir::MlirOp denom;
+          if (reduction_size == 0) {
+            denom = MakeScalarConstant(builder, 0.0, var_type);
+          } else {
+            const mlir::MlirOp reduction_size_const = MakeScalarConstant(
+                builder, static_cast<double>(reduction_size), var_type);
+            TT_ASSIGN_OR_RETURN(
+                const mlir::MlirOp denom_diff,
+                BuildSubShlo(reduction_size_const, correction_op));
+            const mlir::MlirOp zero =
+                MakeScalarConstant(builder, 0.0, var_type);
+            TT_ASSIGN_OR_RETURN(denom, BuildMaximumShlo(denom_diff, zero));
+          }
+
+          // var = sum_sq / denom
+          TT_ASSIGN_OR_RETURN(const mlir::MlirOp var,
+                              BuildDivShlo(sum_sq, denom));
+
+          // std = sqrt(var)
+          TT_ASSIGN_OR_RETURN(const mlir::MlirOp std_op,
+                              BuildSqrtShlo(var, var_type));
+
+          return std::array<mlir::MlirOp, 2>{std_op, mean_out};
+        };
+
+        TT_ASSIGN_OR_THROW(
+            (auto [std_buf, mean_buf]),
+            (DispatchOp<2, 2>(
+                std::move(std_mean_builder), {self, correction_tensor},
+                {.out_dtypes = {std_dtype_mlir, self_dtype_mlir},
+                 .out_dims_list = {output_dims, output_dims},
+                 .computation_dtype = computation_dtype,
+                 .op_param_cache_keys = std::move(param_keys)})));
+
+        return std::make_tuple(MakeTensor(std_buf), MakeTensor(mean_buf));
       });
 }
 

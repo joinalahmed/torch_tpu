@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <tuple>
 
 #include "ATen/core/ATen_fwd.h"
 #include "ATen/core/TensorBody.h"
@@ -35,6 +36,11 @@ at::Tensor& AtenStdOut(const at::Tensor& self,
                        c10::OptionalArrayRef<int64_t> dim,
                        const std::optional<at::Scalar>& correction,
                        bool keep_dim, at::Tensor& out);
+
+// Implements aten::std_mean.correction.
+std::tuple<at::Tensor, at::Tensor> AtenStdMeanCorrection(
+    const at::Tensor& self, c10::OptionalArrayRef<int64_t> dim,
+    const std::optional<at::Scalar>& correction, bool keep_dim);
 
 }  // namespace torch_tpu
 

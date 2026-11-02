@@ -2465,6 +2465,15 @@ Device-side assertion tracking was not enabled by user.""",
       result = torch.std(t, dim=0, correction=4)
     self.assertTrue(torch.all(torch.isnan(result)), f"Got {result.to('cpu')}")
 
+  def test_std_mean_invalid_dtype(self):
+    t = torch.randint(0, 10, (5, 5), dtype=torch.int32, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""std_mean(): expected a floating point or complex dtype, got int32""",
+        gpu="""std_mean only support floating point and complex dtypes""",
+    ):
+      torch.std_mean(t)
+
   def test_var_negative_reduction_factor(self):
     """A warning is issued and nan returned when the variance degrees of freedom is <= 0."""
     # TODO: b/435570003 - Create a utility to compare warning messages.

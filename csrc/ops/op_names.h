@@ -800,6 +800,7 @@ enum class OpName {
   kStackOut,
   kStdCorrection,
   kStdCorrectionOut,
+  kStdMeanCorrection,
   kSub,
   kSubOut,
   kSubTensor,
@@ -2452,6 +2453,8 @@ ToString(  // NOLINT(google-readability-function-size)
       return "std.correction";
     case OpName::kStdCorrectionOut:
       return "std.correction_out";
+    case OpName::kStdMeanCorrection:
+      return "std_mean.correction";
     case OpName::kSub:
       return "sub";
     case OpName::kSubOut:

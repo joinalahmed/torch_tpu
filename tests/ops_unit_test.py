@@ -6264,6 +6264,54 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
     self.assert_close_tpu_vs_cpu(fn)
 
   @parameterized.product(
+      dim=(None, 1, (0, 2)),
+      keepdim=(False, True),
+      correction=(0, 1, 2),
+      dtype=(torch.float32, torch.bfloat16),
+  )
+  def test_std_mean(self, dim, keepdim, correction, dtype):
+    torch.manual_seed(0)
+    x = torch.randn(3, 4, 5, dtype=dtype)
+
+    def compute(device):
+      return torch.std_mean(
+          x.to(device), dim=dim, keepdim=keepdim, correction=correction
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_std_mean_matches_std_and_mean(self):
+    """The two outputs equal torch.std and torch.mean of the same input."""
+    torch.manual_seed(0)
+    x = torch.randn(4, 6)
+
+    def compute(device):
+      x_dev = x.to(device)
+      std, mean = torch.std_mean(x_dev, dim=1, correction=1)
+      return (
+          std,
+          mean,
+          torch.std(x_dev, dim=1, correction=1),
+          torch.mean(x_dev, dim=1),
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_std_mean_correction_not_below_reduction_size(self):
+    """A correction >= the reduction size gives nan std and a finite mean."""
+    x = torch.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
+    def compute(device):
+      with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        return (
+            torch.std_mean(x.to(device), dim=1, correction=3),
+            torch.std_mean(x.to(device), dim=1, correction=4),
+        )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  @parameterized.product(
       dtype=[torch.bfloat16, torch.float32], world_size=[1, 2, 8]
   )
   def test_split_with_sizes_copy_fsdp2_copy_out(self, dtype, world_size):

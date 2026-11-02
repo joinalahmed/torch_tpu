@@ -1061,6 +1061,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kStackOut>(m, AtenStackOut);
   ImplStable<OpName::kStdCorrection>(m, AtenStd);
   ImplStable<OpName::kStdCorrectionOut>(m, AtenStdOut);
+  ImplStable<OpName::kStdMeanCorrection>(m, AtenStdMeanCorrection);
   ImplStable<OpName::kSubOut>(m, AtenSubOut);
   ImplStable<OpName::kSumIntListOut>(m, AtenSumIntListOut);
   ImplStable<OpName::kTake>(m, AtenTake);

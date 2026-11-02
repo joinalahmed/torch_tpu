@@ -466,6 +466,9 @@ enum class OpName {
   kHasCompatibleShallowCopyType,
   kHistc,
   kHistcOut,
+  kHuberLoss,
+  kHuberLossBackwardOut,
+  kHuberLossOut,
   kIlshiftScalar,
   kIlshiftTensor,
   kIm2Col,
@@ -1780,6 +1783,12 @@ ToString(  // NOLINT(google-readability-function-size)
       return "histc";
     case OpName::kHistcOut:
       return "histc.out";
+    case OpName::kHuberLoss:
+      return "huber_loss";
+    case OpName::kHuberLossBackwardOut:
+      return "huber_loss_backward.out";
+    case OpName::kHuberLossOut:
+      return "huber_loss.out";
     case OpName::kIlshiftScalar:
       return "__ilshift__.Scalar";
     case OpName::kIlshiftTensor:

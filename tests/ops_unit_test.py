@@ -9159,6 +9159,68 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
 
     self.assert_close_tpu_vs_cpu(compute)
 
+  @parameterized.product(
+      reduction=("none", "mean", "sum"),
+      delta=(0.5, 1.0, 2.0),
+      dtype=(torch.float32, torch.bfloat16),
+  )
+  def test_huber_loss(self, reduction, delta, dtype):
+    # The differences cover both branches of the loss and both closed
+    # boundaries of its derivative for every delta.
+    x_data = [[-3.0, -2.0, -1.0, -0.5], [0.0, 0.5, 1.0, 2.0]]
+
+    def compute(device):
+      x = torch.tensor(x_data, dtype=dtype, device=device, requires_grad=True)
+      y = torch.zeros_like(x)
+      loss = torch.nn.functional.huber_loss(
+          x, y, reduction=reduction, delta=delta
+      )
+      loss.sum().backward()
+      return loss, x.grad
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  # torch.nn.functional.huber_loss broadcasts the inputs itself, so the
+  # broadcasting tests call the aten ops directly.
+  def test_huber_loss_broadcast(self):
+    def compute(device):
+      x = torch.arange(6.0, device=device).reshape(2, 3)
+      x.requires_grad_()
+      y = torch.tensor([0.5, 2.0, 5.0], device=device)
+      loss = torch.ops.aten.huber_loss(x, y, 1, 1.5)
+      loss.backward()
+      return loss, x.grad
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_huber_loss_out(self):
+    def compute(device):
+      x = torch.tensor([-1.5, -0.25, 0.75, 2.0], device=device)
+      y = torch.zeros(4, device=device)
+      out = torch.empty(4, device=device)
+      torch.ops.aten.huber_loss.out(x, y, 0, 0.5, out=out)
+      # The sum is written to an out tensor of another dtype.
+      out_sum = torch.empty((), dtype=torch.bfloat16, device=device)
+      torch.ops.aten.huber_loss.out(x, y, 2, 0.5, out=out_sum)
+      return out, out_sum
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_huber_loss_backward_out(self):
+    # With the Mean reduction ATen divides by self.numel(), here 3, although
+    # target broadcasts the loss to 6 elements.
+    def compute(device):
+      grad_output = torch.tensor(1.0, device=device)
+      x = torch.tensor([-2.0, 0.0, 2.0], device=device)
+      y = torch.tensor([[-1.0, 0.0, 1.0], [1.0, 0.0, -1.0]], device=device)
+      grad_input = torch.empty(2, 3, device=device)
+      torch.ops.aten.huber_loss_backward.out(
+          grad_output, x, y, 1, 0.5, grad_input=grad_input
+      )
+      return grad_input
+
+    self.assert_close_tpu_vs_cpu(compute)
+
   def test_default_dtype_consistent(self):
     """Tests the torch_tpu respects the default dtype."""
     with set_default_dtype(torch.float32):

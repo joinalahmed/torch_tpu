@@ -9015,6 +9015,60 @@ Supported combinations for non-constant padding:
     ):
       torch.gather(inp, dim, index)
 
+  def test_huber_loss_non_positive_delta(self):
+    x = torch.zeros(2, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""huber_loss(): huber_loss does not support non-positive values for delta.""",
+        gpu="""huber_loss does not support non-positive values for delta.""",
+    ):
+      torch.nn.functional.huber_loss(x, x, delta=0.0)
+
+  def test_huber_loss_out_dtype_mismatch(self):
+    # The functional op writes the loss to a tensor of self's dtype.
+    x = torch.tensor([1, 2], device=et.device())
+    y = torch.zeros(2, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""huber_loss(): result type float32 can't be cast to the desired output type int64""",
+        gpu="""result type Float can't be cast to the desired output type Long""",
+    ):
+      torch.nn.functional.huber_loss(x, y)
+
+  def test_huber_loss_integral_dtype(self):
+    x = torch.tensor([1, 2], device=et.device())
+    with et.assert_raises_message(
+        NotImplementedError,
+        tpu="""huber_loss(): "huber" not implemented for 'int64'""",
+        gpu=""""huber_cuda" not implemented for 'Long'""",
+    ):
+      torch.nn.functional.huber_loss(x, x)
+
+  def test_huber_loss_backward_dtype_mismatch(self):
+    grad_output = torch.ones(2, device=et.device())
+    x = torch.zeros(2, device=et.device())
+    grad_input = torch.empty(2, device=et.device(), dtype=torch.float64)
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""huber_loss_backward(): expected self, target, grad_output and grad_input to have the same dtype, got float32, float32, float32 and float64""",
+        gpu="""Found dtype Double but expected Float""",
+    ):
+      torch.ops.aten.huber_loss_backward.out(
+          grad_output, x, x, 0, 1.0, grad_input=grad_input
+      )
+
+  def test_huber_loss_backward_integral_dtype(self):
+    x = torch.tensor([1, 2], device=et.device())
+    grad_input = torch.empty(2, device=et.device(), dtype=torch.int64)
+    with et.assert_raises_message(
+        NotImplementedError,
+        tpu="""huber_loss_backward(): "huber_backward" not implemented for 'int64'""",
+        gpu=""""huber_backward_cuda" not implemented for 'Long'""",
+    ):
+      torch.ops.aten.huber_loss_backward.out(
+          x, x, x, 0, 1.0, grad_input=grad_input
+      )
+
   def test_lerp_int(self):
     t = torch.tensor([1, 2], device=et.device(), dtype=torch.int32)
 

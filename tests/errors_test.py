@@ -2693,6 +2693,83 @@ Device-side assertion tracking was not enabled by user.""",
     ):
       torch.channel_shuffle(t, 2)
 
+  def test_addbmm_unsupported_dtype(self):
+    input_tensor = torch.ones(2, 4, device=et.device(), dtype=torch.int64)
+    batch1 = torch.ones(2, 2, 3, device=et.device(), dtype=torch.int64)
+    batch2 = torch.ones(2, 3, 4, device=et.device(), dtype=torch.int64)
+    with et.assert_raises_message(
+        NotImplementedError,
+        tpu="""addbmm(): not implemented for int64""",
+        gpu=""""addmm_cuda" not implemented for 'Long'""",
+    ):
+      torch.addbmm(input_tensor, batch1, batch2)
+
+  def test_addbmm_batch1_not_batch_of_matrices(self):
+    input_tensor = torch.ones(2, 4, device=et.device())
+    batch1 = torch.ones(2, 2, 3, 3, device=et.device())
+    batch2 = torch.ones(2, 3, 4, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""addbmm(): expected batch1 to be a 3D tensor (batch of matrices), got 4D""",
+        gpu="""batch1 must be a 3D tensor""",
+    ):
+      torch.addbmm(input_tensor, batch1, batch2)
+
+  def test_addbmm_batch2_not_batch_of_matrices(self):
+    input_tensor = torch.ones(2, 4, device=et.device())
+    batch1 = torch.ones(2, 2, 3, device=et.device())
+    batch2 = torch.ones(2, 3, 4, 4, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""addbmm(): expected batch2 to be a 3D tensor (batch of matrices), got 4D""",
+        gpu="""batch2 must be a 3D tensor""",
+    ):
+      torch.addbmm(input_tensor, batch1, batch2)
+
+  def test_addbmm_mismatch_batch_dimensions(self):
+    input_tensor = torch.ones(2, 4, device=et.device())
+    batch1 = torch.ones(1, 2, 3, device=et.device())
+    batch2 = torch.ones(2, 3, 4, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""addbmm(): expected the batch dimension of the first argument (of shape [1, 2, 3]) to match the batch dimension of the second argument (of shape [2, 3, 4]), got 1 vs 2""",
+        gpu="""batch1 and batch2 must have same number of batches, got 1 and 2""",
+    ):
+      torch.addbmm(input_tensor, batch1, batch2)
+
+  def test_addbmm_mismatch_mm_contracting_dimension(self):
+    input_tensor = torch.ones(2, 4, device=et.device())
+    batch1 = torch.ones(2, 2, 3, device=et.device())
+    batch2 = torch.ones(2, 5, 4, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""addbmm(): expected the last dimension of the first argument (of shape [2, 2, 3]) to match the second dimension of the second argument (of shape [2, 5, 4]), got 3 vs 5""",
+        gpu="""Incompatible matrix sizes for bmm (2x3 and 5x4)""",
+    ):
+      torch.addbmm(input_tensor, batch1, batch2)
+
+  def test_addbmm_input_rank_larger_than_matrix_product(self):
+    input_tensor = torch.ones(1, 2, 4, device=et.device())
+    batch1 = torch.ones(2, 2, 3, device=et.device())
+    batch2 = torch.ones(2, 3, 4, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""addbmm(): expected input to have at most 2 dimensions, got 3D""",
+        gpu="""expand(torch.cuda.FloatTensor{[1, 2, 4]}, size=[2, 4]): the number of sizes provided (2) must be greater or equal to the number of dimensions in the tensor (3)""",
+    ):
+      torch.addbmm(input_tensor, batch1, batch2)
+
+  def test_addbmm_input_not_broadcastable_to_matrix_product(self):
+    input_tensor = torch.ones(3, 4, device=et.device())
+    batch1 = torch.ones(2, 2, 3, device=et.device())
+    batch2 = torch.ones(2, 3, 4, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""addbmm(): expected input (of shape [3, 4]) to be broadcastable to the matrix product shape [2, 4]""",
+        gpu="""The expanded size of the tensor (2) must match the existing size (3) at non-singleton dimension 0.  Target sizes: [2, 4].  Tensor sizes: [3, 4]""",
+    ):
+      torch.addbmm(input_tensor, batch1, batch2)
+
   def test_addcmul_bool_error(self):
     """Tests that addcmul errors out with bool inputs."""
     self_tensor = torch.tensor([[True] * 5] * 5, dtype=torch.bool).to(

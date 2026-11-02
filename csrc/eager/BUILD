@@ -743,6 +743,7 @@ torch_tpu_cc_library(
         "//csrc/ops:op_names",
         "//csrc/ops:unary_aten_kernels",
         "//csrc/ops/a_min_max:a_min_max_aten_kernels",
+        "//csrc/ops/addbmm:addbmm_aten_kernels",
         "//csrc/ops/addcdiv:addcdiv_aten_kernels",
         "//csrc/ops/addcmul:addcmul_aten_kernels",
         "//csrc/ops/addmm:addmm_aten_kernels",

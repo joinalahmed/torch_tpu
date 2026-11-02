@@ -46,6 +46,7 @@
 #include "csrc/common/to_string.h"
 #include "csrc/common/warnings.h"
 #include "csrc/ops/a_min_max/a_min_max_aten_kernels.h"
+#include "csrc/ops/addbmm/addbmm_aten_kernels.h"
 #include "csrc/ops/addcdiv/addcdiv_aten_kernels.h"
 #include "csrc/ops/addcmul/addcmul_aten_kernels.h"
 #include "csrc/ops/addmm/addmm_aten_kernels.h"
@@ -392,6 +393,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kAddReluTensor>(m, AtenAddReluTensor);
   ImplStable<OpName::kAddRelu_Scalar>(m, AtenAddRelu_Scalar);
   ImplStable<OpName::kAddRelu_Tensor>(m, AtenAddRelu_Tensor);
+  ImplStable<OpName::kAddbmm>(m, AtenAddbmm);
+  ImplStable<OpName::kAddbmmOut>(m, AtenAddbmmOut);
+  ImplStable<OpName::kAddbmm_>(m, AtenAddbmm_);
   ImplStable<OpName::kAddcdivOut>(m, AtenAddcdivOut);
   ImplStable<OpName::kAddcmulOut>(m, AtenAddcmulOut);
   ImplStable<OpName::kAddmmActivationOut>(m, AtenAddmmActivationOut);

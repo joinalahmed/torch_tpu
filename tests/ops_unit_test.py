@@ -13322,6 +13322,101 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
         atol=1e-2,
     )
 
+  def test_addbmm(self):
+    """Functional, out= and in-place addbmm with default beta and alpha."""
+
+    def compute(device):
+      m = torch.arange(15.0, device=device).reshape(3, 5)
+      b1 = torch.arange(24.0, device=device).reshape(2, 3, 4)
+      b2 = torch.arange(40.0, device=device).reshape(2, 4, 5)
+      out = torch.empty(3, 5, device=device)
+      torch.addbmm(m, b1, b2, out=out)
+      inplace = m.clone().addbmm_(b1, b2)
+      return torch.addbmm(m, b1, b2), out, inplace
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_addbmm_beta_alpha(self):
+    """addbmm scales the input by beta and the batch sum by alpha."""
+
+    def compute(device):
+      m = torch.arange(15.0, device=device).reshape(3, 5)
+      b1 = torch.arange(24.0, device=device).reshape(2, 3, 4)
+      b2 = torch.arange(40.0, device=device).reshape(2, 4, 5)
+      return (
+          torch.addbmm(m, b1, b2, beta=0.5, alpha=2.0),
+          torch.addbmm(m, b1, b2, beta=2, alpha=3),
+          torch.addbmm(m, b1, b2, beta=0.5, alpha=0.0),
+          m.clone().addbmm_(b1, b2, beta=0.5, alpha=2.0),
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_addbmm_zero_beta_ignores_nan_input(self):
+    """torch.addbmm() with zero beta should ignore NaN input, as in ATen."""
+
+    def compute(device):
+      nan_input = torch.full((3, 5), float("nan"), device=device)
+      b1 = torch.arange(24.0, device=device).reshape(2, 3, 4)
+      b2 = torch.arange(40.0, device=device).reshape(2, 4, 5)
+      return (
+          torch.addbmm(nan_input, b1, b2, beta=0.0),
+          torch.addbmm(nan_input, b1, b2, beta=0.0, alpha=2.0),
+          nan_input.clone().addbmm_(b1, b2, beta=0.0),
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_addbmm_input_broadcasting(self):
+    """The input broadcasts to the (n, p) shape of the batch sum."""
+    b1 = torch.arange(24.0).reshape(2, 3, 4)
+    b2 = torch.arange(40.0).reshape(2, 4, 5)
+    input_shapes = [[5], [1], [], [1, 5], [3, 1], [1, 1]]
+
+    for input_shape in input_shapes:
+      numel = math.prod(input_shape)
+      m = torch.arange(1.0, numel + 1.0).reshape(input_shape)
+      self.assert_close_tpu_vs_cpu(
+          lambda device, m=m: torch.addbmm(
+              m.to(device), b1.to(device), b2.to(device), beta=2.0
+          )
+      )
+
+  def test_addbmm_batch_size_one_and_zero(self):
+    """A single batch is a plain matmul; an empty batch gives beta * input."""
+
+    def compute(device):
+      m = torch.arange(15.0, device=device).reshape(3, 5)
+      nan_input = torch.full((3, 5), float("nan"), device=device)
+      b1_one = torch.arange(12.0, device=device).reshape(1, 3, 4)
+      b2_one = torch.arange(20.0, device=device).reshape(1, 4, 5)
+      b1_empty = torch.empty(0, 3, 4, device=device)
+      b2_empty = torch.empty(0, 4, 5, device=device)
+      return (
+          torch.addbmm(m, b1_one, b2_one),
+          torch.addbmm(m, b1_empty, b2_empty),
+          torch.addbmm(m, b1_empty, b2_empty, beta=0.5, alpha=2.0),
+          torch.addbmm(nan_input, b1_empty, b2_empty, beta=0.0),
+          m.clone().addbmm_(b1_empty, b2_empty, beta=0.5),
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_addbmm_bfloat16(self):
+    def compute(device):
+      m = torch.arange(15.0, device=device).reshape(3, 5)
+      b1 = torch.arange(24.0, device=device).reshape(2, 3, 4) / 8
+      b2 = torch.arange(40.0, device=device).reshape(2, 4, 5) / 8
+      return torch.addbmm(
+          m.to(torch.bfloat16),
+          b1.to(torch.bfloat16),
+          b2.to(torch.bfloat16),
+          beta=0.5,
+          alpha=2.0,
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
   def test_baddbmm_zero_beta_ignores_nan_input(self):
     """torch.baddbmm() with zero beta should ignore NaN input."""
     nan_input = torch.full((2, 2, 4), float("nan"), dtype=torch.float32)

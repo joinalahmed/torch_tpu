@@ -49,6 +49,9 @@ enum class OpName {
   kAddRelu_Tensor,
   kAddTensor,
   kAdd_Tensor,
+  kAddbmm,
+  kAddbmmOut,
+  kAddbmm_,
   kAddcdivOut,
   kAddcmulOut,
   kAddmm,
@@ -946,6 +949,12 @@ ToString(  // NOLINT(google-readability-function-size)
       return "add.Tensor";
     case OpName::kAdd_Tensor:
       return "add_.Tensor";
+    case OpName::kAddbmm:
+      return "addbmm";
+    case OpName::kAddbmmOut:
+      return "addbmm.out";
+    case OpName::kAddbmm_:
+      return "addbmm_";
     case OpName::kAddcdivOut:
       return "addcdiv.out";
     case OpName::kAddcmulOut:

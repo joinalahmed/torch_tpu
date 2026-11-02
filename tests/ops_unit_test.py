@@ -13528,6 +13528,68 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
           )
       )
 
+  # torch.nn.functional.smooth_l1_loss broadcasts the inputs itself and
+  # delegates beta == 0 to l1_loss, so the tests call the aten op directly to
+  # cover the kernel's own broadcasting and its beta == 0 path.
+  @parameterized.product(
+      reduction=(0, 1, 2),  # None, Mean, Sum
+      beta=(0.0, 0.5, 1.0),
+      dtype=(torch.float32, torch.bfloat16),
+  )
+  def test_smooth_l1_loss(self, reduction, beta, dtype):
+    # The differences cover both branches of the loss and both closed
+    # boundaries of its derivative for every beta, including d == 0 for
+    # beta == 0 where ATen returns -1.
+    x_data = [[-2.0, -1.0, -0.5, 0.0], [0.25, 0.5, 1.0, 3.0]]
+
+    def compute(device):
+      x = torch.tensor(x_data, dtype=dtype, device=device, requires_grad=True)
+      y = torch.zeros_like(x)
+      loss = torch.ops.aten.smooth_l1_loss(x, y, reduction, beta)
+      loss.sum().backward()
+      return loss, x.grad
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_smooth_l1_loss_broadcast(self):
+    def compute(device):
+      x = torch.arange(6.0, device=device).reshape(2, 3)
+      x.requires_grad_()
+      y = torch.tensor([0.5, 2.0, 5.0], device=device)
+      loss = torch.ops.aten.smooth_l1_loss(x, y, 1, 1.0)
+      loss.backward()
+      return loss, x.grad
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_smooth_l1_loss_out(self):
+    def compute(device):
+      x = torch.tensor([-1.5, -0.25, 0.75, 2.0], device=device)
+      y = torch.zeros(4, device=device)
+      out = torch.empty(4, device=device)
+      torch.ops.aten.smooth_l1_loss.out(x, y, 0, 0.5, out=out)
+      # The sum is written to an out tensor of another dtype.
+      out_sum = torch.empty((), dtype=torch.bfloat16, device=device)
+      torch.ops.aten.smooth_l1_loss.out(x, y, 2, 0.5, out=out_sum)
+      return out, out_sum
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_smooth_l1_loss_backward_grad_input(self):
+    # With the Mean reduction ATen divides by self.numel(), here 3, although
+    # target broadcasts the loss to 6 elements.
+    def compute(device):
+      grad_output = torch.tensor(1.0, device=device)
+      x = torch.tensor([-2.0, 0.0, 2.0], device=device)
+      y = torch.tensor([[-1.0, 0.0, 1.0], [1.0, 0.0, -1.0]], device=device)
+      grad_input = torch.empty(2, 3, device=device)
+      torch.ops.aten.smooth_l1_loss_backward.grad_input(
+          grad_output, x, y, 1, 1.0, grad_input=grad_input
+      )
+      return grad_input
+
+    self.assert_close_tpu_vs_cpu(compute)
+
   def test_sort_indices(self):
     """Tests that torch.sort returns correct indices (dtype and values)."""
     x = torch.tensor([5.0, 1.0, 3.0, 2.0, 4.0], dtype=torch.float32)

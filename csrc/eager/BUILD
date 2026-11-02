@@ -902,6 +902,7 @@ torch_tpu_cc_library(
         "//csrc/ops/silu:silu_aten_kernels",
         "//csrc/ops/slice_backward:slice_backward_aten_kernels",
         "//csrc/ops/slice_scatter:slice_scatter_aten_kernels",
+        "//csrc/ops/smooth_l1_loss:smooth_l1_loss_aten_kernels",
         "//csrc/ops/softmax:_masked_softmax_aten_kernels",
         "//csrc/ops/softmax:softmax_aten_kernels",
         "//csrc/ops/softplus:softplus_aten_kernels",

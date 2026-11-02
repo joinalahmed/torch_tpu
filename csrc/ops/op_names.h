@@ -774,6 +774,8 @@ enum class OpName {
   kSliceBackward,
   kSliceScatter,
   kSliceScatterOut,
+  kSmoothL1LossBackwardGradInput,
+  kSmoothL1LossOut,
   kSoftmaxBackwardDataOut,
   kSoftmaxOut,
   kSoftplusBackwardGradInput,
@@ -2400,6 +2402,10 @@ ToString(  // NOLINT(google-readability-function-size)
       return "slice_scatter";
     case OpName::kSliceScatterOut:
       return "slice_scatter.out";
+    case OpName::kSmoothL1LossBackwardGradInput:
+      return "smooth_l1_loss_backward.grad_input";
+    case OpName::kSmoothL1LossOut:
+      return "smooth_l1_loss.out";
     case OpName::kSoftmaxBackwardDataOut:
       return "_softmax_backward_data.out";
     case OpName::kSoftmaxOut:

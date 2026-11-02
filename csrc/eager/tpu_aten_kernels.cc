@@ -211,6 +211,7 @@
 #include "csrc/ops/silu/silu_aten_kernels.h"
 #include "csrc/ops/slice_backward/slice_backward_aten_kernels.h"
 #include "csrc/ops/slice_scatter/slice_scatter_aten_kernels.h"
+#include "csrc/ops/smooth_l1_loss/smooth_l1_loss_aten_kernels.h"
 #include "csrc/ops/softmax/_masked_softmax_aten_kernels.h"
 #include "csrc/ops/softmax/softmax_aten_kernels.h"
 #include "csrc/ops/softplus/softplus_aten_kernels.h"
@@ -1049,6 +1050,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kSliceBackward>(m, AtenSliceBackward);
   ImplStable<OpName::kSliceScatter>(m, AtenSliceScatter);
   ImplStable<OpName::kSliceScatterOut>(m, AtenSliceScatterOut);
+  ImplStable<OpName::kSmoothL1LossBackwardGradInput>(
+      m, AtenSmoothL1LossBackwardGradInput);
+  ImplStable<OpName::kSmoothL1LossOut>(m, AtenSmoothL1LossOut);
   ImplStable<OpName::kSoftmaxBackwardDataOut>(m, AtenSoftmaxBackwardDataOut);
   ImplStable<OpName::kSoftmaxOut>(m, AtenSoftmaxOut);
   ImplStable<OpName::kSoftplusBackwardGradInput>(m,

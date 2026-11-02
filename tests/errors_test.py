@@ -9107,6 +9107,24 @@ Supported combinations for non-constant padding:
     ):
       torch.ops.aten.mse_loss_backward(bool_t, bool_t, bool_t, 1)
 
+  def test_smooth_l1_loss_integral_dtype(self):
+    x = torch.tensor([1, 2], device=et.device())
+    with et.assert_raises_message(
+        NotImplementedError,
+        tpu="""smooth_l1_loss(): "smooth_l1" not implemented for 'int64'""",
+        gpu=""""smooth_l1_cuda" not implemented for 'Long'""",
+    ):
+      torch.nn.functional.smooth_l1_loss(x, x)
+
+  def test_smooth_l1_loss_negative_beta(self):
+    x = torch.zeros(2, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""smooth_l1_loss(): smooth_l1_loss does not support negative values for beta.""",
+        gpu="""smooth_l1_loss does not support negative values for beta.""",
+    ):
+      torch.nn.functional.smooth_l1_loss(x, x, beta=-1.0)
+
   def test_embedding_renorm_float(self):
     inp = torch.ones(3, 2, device=et.device(), dtype=torch.int64)
     indices = torch.ones(10, 2, device=et.device(), dtype=torch.int64)

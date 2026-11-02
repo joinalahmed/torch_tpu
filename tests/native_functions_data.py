@@ -339,8 +339,6 @@ UNREGISTERED_OPS = frozenset([
     'slow_conv_transpose2d.out',
     'slow_conv_transpose3d',
     'slow_conv_transpose3d.out',
-    'smooth_l1_loss.out',
-    'smooth_l1_loss_backward.grad_input',
     'softshrink.out',
     'softshrink_backward.grad_input',
     'sparse_mask',

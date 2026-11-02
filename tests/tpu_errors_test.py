@@ -1783,6 +1783,21 @@ Please use clone() or contiguous() to copy the tensor before writing""",
     ):
       torch.nn.functional.mse_loss(inp, target)
 
+  @et.why_tpu_only(
+      "The ATen CPU and CUDA kernels compute smooth_l1_loss_backward for"
+      " integral dtypes; TPU only supports floating-point dtypes."
+  )
+  def test_smooth_l1_loss_backward_integral_dtype(self):
+    x = torch.tensor([1, 2], device=et.device())
+    grad_input = torch.empty(2, device=et.device(), dtype=torch.int64)
+    with et.assert_raises_message(
+        NotImplementedError,
+        tpu="""smooth_l1_loss_backward(): "smooth_l1_backward" not implemented for 'int64'""",
+    ):
+      torch.ops.aten.smooth_l1_loss_backward.grad_input(
+          x, x, x, 1, 1.0, grad_input=grad_input
+      )
+
   @et.why_tpu_only("TODO: support more memory formats in resize_() on TPU.")
   def test_resize_unsupported_memory_format(self):
     t = torch.ones(1, 2, 3, 4, device=et.device())

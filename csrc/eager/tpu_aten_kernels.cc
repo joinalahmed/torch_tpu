@@ -190,6 +190,7 @@
 #include "csrc/ops/random/random_aten_kernels.h"
 #include "csrc/ops/randperm/randperm_aten_kernels.h"
 #include "csrc/ops/reductions/mean_aten_kernels.h"
+#include "csrc/ops/reductions/nansum_aten_kernels.h"
 #include "csrc/ops/reductions/std_aten_kernels.h"
 #include "csrc/ops/reductions/sum_aten_kernels.h"
 #include "csrc/ops/reductions/var_aten_kernels.h"
@@ -884,6 +885,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kMultinomial>(m, AtenMultinomial);
   ImplStable<OpName::kMultinomialOut>(m, AtenMultinomialOut);
   ImplStable<OpName::kNanToNumOut>(m, AtenNanToNumOut);
+  ImplStable<OpName::kNansum>(m, AtenNansum);
+  ImplStable<OpName::kNansumOut>(m, AtenNansumOut);
   ImplStable<OpName::kNativeBatchNorm>(m, AtenNativeBatchNorm);
   ImplStable<OpName::kNativeBatchNormBackward>(m, AtenNativeBatchNormBackward);
   ImplStable<OpName::kNativeBatchNormLegit>(m, AtenNativeBatchNormLegit);

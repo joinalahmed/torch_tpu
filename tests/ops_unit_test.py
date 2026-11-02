@@ -12856,6 +12856,45 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
 
     self.assert_close_tpu_vs_cpu(run)
 
+  def test_nansum(self):
+    nan = float("nan")
+    data = [[1.0, nan, 3.0], [nan, nan, nan], [-2.0, 0.5, nan]]
+
+    def compute(device):
+      x = torch.tensor(data, device=device)
+      out = torch.empty(3, device=device)
+      torch.nansum(x, dim=1, out=out)
+      return (
+          torch.nansum(x),
+          torch.nansum(x, dim=()),
+          torch.nansum(x, dim=1),
+          torch.nansum(x, dim=0, keepdim=True),
+          torch.nansum(x, dim=(0, 1), keepdim=True),
+          out,
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_nansum_dtypes(self):
+    nan = float("nan")
+
+    def compute(device):
+      x = torch.tensor([[1.0, nan], [nan, 2.5]], device=device)
+      i = torch.tensor([[1, 2], [3, 4]], dtype=torch.int32, device=device)
+      out = torch.empty(2, dtype=torch.int64, device=device)
+      torch.nansum(i, dim=0, out=out)
+      return (
+          torch.nansum(x, dtype=torch.bfloat16),
+          torch.nansum(x.to(torch.bfloat16), dim=1),
+          # Integral inputs have no NaN and sum into int64.
+          torch.nansum(i),
+          torch.nansum(i, dim=1, dtype=torch.float32),
+          torch.nansum(torch.tensor([True, False, True], device=device)),
+          out,
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
   def test_xlogy(self):
     x_data = [0.0, 0.0, 1.0, 0.0, 2.0, -1.0]
     y_data = [0.0, -1.0, float("nan"), float("nan"), 2.0, 3.0]

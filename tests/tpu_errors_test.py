@@ -168,6 +168,15 @@ class TpuOnlyErrorTest(et.TpuOnlyErrorTestBase):
       t = torch.empty((2, 2), dtype=torch.complex128, device=et.device())
       t.fill_(1.0)
 
+  @et.why_tpu_only("CUDA implements nansum for complex inputs; TPU does not.")
+  def test_nansum_complex(self):
+    x = torch.tensor([1 + 1j], device=et.device())
+    with et.assert_raises_message(
+        NotImplementedError,
+        tpu="""nansum(): complex inputs are not supported""",
+    ):
+      torch.nansum(x)
+
   @et.why_tpu_only(
       "TPU masked_scatter uses int32 source offsets. GPU supports larger"
       " offsets."

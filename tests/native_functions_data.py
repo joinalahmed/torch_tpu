@@ -300,8 +300,6 @@ UNREGISTERED_OPS = frozenset([
     'mvlgamma.out',
     'nanmedian',
     'nanmedian.dim_values',
-    'nansum',
-    'nansum.out',
     'narrow_copy.out',
     'nextafter.out',
     'nonzero_static',

@@ -11321,6 +11321,16 @@ Device-side assertion tracking was not enabled by user.""",
     ):
       torch.geqrf(input_tensor)
 
+  def test_nansum_out_dtype_mismatch(self):
+    x = torch.tensor([[1.0, float("nan")]], device=et.device())
+    out = torch.empty(1, device=et.device(), dtype=torch.float32)
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""nansum(): provided dtype must match dtype of result. Got float32 and bfloat16.""",
+        gpu="""nansum: provided dtype must match dtype of result. Got Float and BFloat16.""",
+    ):
+      torch.nansum(x, dim=1, dtype=torch.bfloat16, out=out)
+
   def test_xlogy_unsupported_complex_dtype(self):
     complex_val = torch.complex(torch.tensor(1.0), torch.tensor(1.0))
     complex_val = complex_val.to(et.device())

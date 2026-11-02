@@ -100,6 +100,35 @@ torch_tpu_cc_library(
 )
 
 torch_tpu_cc_library(
+    name = "nansum_aten_kernels",
+    srcs = ["nansum_aten_kernels.cc"],
+    hdrs = ["nansum_aten_kernels.h"],
+    deps = [
+        ":reduction_utils",
+        ":reductions",
+        ":sum",
+        "//csrc/common:cache_key",
+        "//csrc/common:dimension_types",
+        "//csrc/common:dtype",
+        "//csrc/common:error_utils",
+        "//csrc/common:to_string",
+        "//csrc/ops:op_builder_utils",
+        "//csrc/ops:op_names",
+        "//csrc/ops:unary_aten_kernels",
+        "//csrc/ops/is",
+        "//csrc/ops/macros:kernel",
+        "//shims/torch:aten_headers",
+        "//shims/torch/c10/core:base_headers",
+        "//shims/torch/c10/util:base_headers",
+        "//shims/torch/torch/headeronly:torch_headeronly",
+        "@com_google_absl//absl/status:statusor",
+        "@stablehlo//stablehlo/integrations/cpp/builder:attr_type_builder_util",
+        "@stablehlo//stablehlo/integrations/cpp/builder:mlir_builder",
+        "@stablehlo//stablehlo/integrations/cpp/builder:stablehlo_builder",
+    ],
+)
+
+torch_tpu_cc_library(
     name = "sum_aten_kernels",
     srcs = ["sum_aten_kernels.cc"],
     hdrs = ["sum_aten_kernels.h"],

@@ -599,6 +599,8 @@ enum class OpName {
   kMultinomial,
   kMultinomialOut,
   kNanToNumOut,
+  kNansum,
+  kNansumOut,
   kNativeBatchNorm,
   kNativeBatchNormBackward,
   kNativeBatchNormLegit,
@@ -2046,6 +2048,10 @@ ToString(  // NOLINT(google-readability-function-size)
       return "multinomial.out";
     case OpName::kNanToNumOut:
       return "nan_to_num.out";
+    case OpName::kNansum:
+      return "nansum";
+    case OpName::kNansumOut:
+      return "nansum.out";
     case OpName::kNativeBatchNorm:
       return "native_batch_norm";
     case OpName::kNativeBatchNormBackward:

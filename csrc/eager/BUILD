@@ -916,6 +916,7 @@ torch_tpu_cc_library(
         "//csrc/ops/threshold:threshold_aten_kernels",
         "//csrc/ops/to_copy",
         "//csrc/ops/topk:topk_aten_kernels",
+        "//csrc/ops/trace:trace_aten_kernels",
         "//csrc/ops/transformer_encoder_layer_fwd:transformer_encoder_layer_fwd_aten_kernels",
         "//csrc/ops/triangular:triangular_aten_kernels",
         "//csrc/ops/tril_indices:tril_indices_aten_kernels",

@@ -12856,6 +12856,32 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
 
     self.assert_close_tpu_vs_cpu(run)
 
+  def test_trace(self):
+    def compute(device):
+      square = torch.arange(9.0, device=device).reshape(3, 3)
+      wide = torch.arange(6.0, device=device).reshape(2, 3)
+      tall = torch.arange(6.0, device=device).reshape(3, 2)
+      return (
+          torch.trace(square),
+          torch.trace(wide),
+          torch.trace(tall),
+          torch.trace(torch.empty(0, 0, device=device)),
+          torch.trace(torch.tensor([[2.5]], device=device)),
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
+  def test_trace_dtypes(self):
+    def compute(device):
+      x = torch.arange(1, 10, device=device).reshape(3, 3)
+      return (
+          torch.trace(x),  # int64
+          torch.trace(x.to(torch.int32)),  # Integral inputs sum into int64.
+          torch.trace(x.to(torch.bfloat16)),
+      )
+
+    self.assert_close_tpu_vs_cpu(compute)
+
   def test_xlogy(self):
     x_data = [0.0, 0.0, 1.0, 0.0, 2.0, -1.0]
     y_data = [0.0, -1.0, float("nan"), float("nan"), 2.0, 3.0]

@@ -11321,6 +11321,24 @@ Device-side assertion tracking was not enabled by user.""",
     ):
       torch.geqrf(input_tensor)
 
+  def test_trace_1d_input(self):
+    x = torch.ones(3, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""trace(): expected a matrix, but got tensor with dim 1""",
+        gpu="""expected a matrix""",
+    ):
+      torch.trace(x)
+
+  def test_trace_3d_input(self):
+    x = torch.ones(2, 2, 2, device=et.device())
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""trace(): expected a matrix, but got tensor with dim 3""",
+        gpu="""expected a matrix""",
+    ):
+      torch.trace(x)
+
   def test_xlogy_unsupported_complex_dtype(self):
     complex_val = torch.complex(torch.tensor(1.0), torch.tensor(1.0))
     complex_val = complex_val.to(et.device())

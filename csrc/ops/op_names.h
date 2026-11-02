@@ -828,6 +828,7 @@ enum class OpName {
   kTorchTpuInternalZeroSize,
   kTorchTpuOptimizationBarrier,
   kTorchTpuStorageAllocate,
+  kTrace,
   kTransformerEncoderLayerFwd,
   kTrilIndices,
   kTrilOut,
@@ -2508,6 +2509,8 @@ ToString(  // NOLINT(google-readability-function-size)
       return "_optimization_barrier";
     case OpName::kTorchTpuStorageAllocate:
       return "storage.allocate";
+    case OpName::kTrace:
+      return "trace";
     case OpName::kTransformerEncoderLayerFwd:
       return "_transformer_encoder_layer_fwd";
     case OpName::kTrilIndices:

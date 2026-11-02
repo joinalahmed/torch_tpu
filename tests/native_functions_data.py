@@ -385,7 +385,6 @@ UNREGISTERED_OPS = frozenset([
     'std_mean.correction',
     'to_mkldnn',
     'to_padded_tensor',
-    'trace',
     'triangular_solve.X',
     'triu_indices',
     'upsample_trilinear3d.out',

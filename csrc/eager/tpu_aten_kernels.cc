@@ -225,6 +225,7 @@
 #include "csrc/ops/threshold/threshold_aten_kernels.h"
 #include "csrc/ops/to_copy/to_copy_aten_kernels.h"
 #include "csrc/ops/topk/topk_aten_kernels.h"
+#include "csrc/ops/trace/trace_aten_kernels.h"
 #include "csrc/ops/transformer_encoder_layer_fwd/_transformer_encoder_layer_fwd_aten_kernels.h"
 #include "csrc/ops/triangular/triangular_aten_kernels.h"
 #include "csrc/ops/tril_indices/tril_indices_aten_kernels.h"
@@ -1081,6 +1082,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   ImplStable<OpName::kThresholdOut>(m, AtenThresholdOut);
   ImplStable<OpName::kToCopy>(m, AtenToCopy);
   ImplStable<OpName::kTopkValues>(m, AtenTopKValues);
+  ImplStable<OpName::kTrace>(m, AtenTrace);
   ImplStable<OpName::kTransformerEncoderLayerFwd>(
       m, AtenTransformerEncoderLayerFwd);
   ImplStable<OpName::kTrilIndices>(m, AtenTrilIndices);

@@ -12877,10 +12877,18 @@ class OpsUnitTest(TorchTpuVsCpuTestBase):
       return (
           torch.trace(x),  # int64
           torch.trace(x.to(torch.int32)),  # Integral inputs sum into int64.
-          torch.trace(x.to(torch.bfloat16)),
       )
 
     self.assert_close_tpu_vs_cpu(compute)
+
+  def test_trace_bfloat16(self):
+    # The CPU kernel has no bfloat16 trace, so the reference is the float32
+    # trace cast to bfloat16. 1 + 5 + 9 is exact in bfloat16.
+    x = torch.arange(1.0, 10.0).reshape(3, 3)
+    expected = torch.trace(x).to(torch.bfloat16)
+    actual = torch.trace(x.to(torch.bfloat16).to("tpu")).cpu()
+    self.assertEqual(actual.dtype, torch.bfloat16)
+    self.assertEqual(actual.item(), expected.item())
 
   def test_xlogy(self):
     x_data = [0.0, 0.0, 1.0, 0.0, 2.0, -1.0]

@@ -113,8 +113,8 @@ def _(mo):
   mo.md(r"""
     ## 2. Set the matmul precision
 
-    By default, TorchTPU runs `float32` matmuls with `bfloat16` inputs on the
-    MXU (see
+    By default (`"medium"`, `Precision.DEFAULT`), TorchTPU runs `float32`
+    matmuls with `bfloat16` inputs on the MXU (see
     [Manage numerical precision in TorchTPU](numerical_precision.py)). Model
     outputs tolerate this well; attributions, which are differences of gradients,
     do not. Maximum relative error of the TPU attribution against the CPU
@@ -140,9 +140,11 @@ def _(mo):
   mo.md(r"""
     ## 3. Compare the execution modes
 
-    TorchTPU picks its execution mode when it is imported (see
-    [The TorchTPU execution model](torchtpu_execution_model.py)), so the example
-    script runs one mode per process:
+    The eager mode can be switched in-process with the
+    `torch.tpu.set_eager_mode(torch.tpu.EagerMode.DEFER_AND_FUSE)` context
+    manager or for the whole process with `TORCH_TPU_DEFER_AND_FUSE=1` (see
+    [The TorchTPU execution model](torchtpu_execution_model.py)). The example
+    script uses the environment variable so that one command runs one mode:
 
     ```bash
     python3 captum_attribution.py --model Qwen/Qwen3-0.6B

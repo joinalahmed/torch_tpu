@@ -49,12 +49,14 @@
 #include "stablehlo/dialect/StablehloOps.h"
 #include "stablehlo/integrations/cpp/builder/AttrTypeBuilderUtil.h"
 #include "stablehlo/integrations/cpp/builder/MlirBuilder.h"
+#include "torch/headeronly/core/ScalarType.h"
 
 namespace torch_tpu {
 namespace {
 
 using ::testing::ElementsAre;
 using ::testing::Eq;
+using ::testing::HasSubstr;
 using ::testing::Optional;
 using ::testing::Property;
 
@@ -82,6 +84,24 @@ TEST(PromoteScalar, Array) {
 
   EXPECT_EQ(vps[0].scalar().toDouble(), 3.0);
   EXPECT_EQ(vps[1].scalar().toDouble(), 4.0);
+}
+
+TEST(PromoteScalar, UnsupportedScalarTypeReturnsError) {
+  // complex32 is the one dtype that the CPU cast inside MakeBuffer accepts but
+  // the conversion to mlir::ElementType rejects, so promoting to it exercises
+  // the failure path from the scalar to the device buffer.
+  ScopedPythonContextCapturer capturer(OpName::kScalarTensor);
+  PromotedScalar promoted = PromoteScalar(at::Scalar(1.0));
+  absl::StatusOr<at::Tensor> tensor =
+      promoted.GetTensor(at::ScalarType::ComplexHalf);
+  ASSERT_FALSE(tensor.ok());
+  EXPECT_EQ(tensor.status().code(), error::kPythonNotImplementedError);
+  EXPECT_THAT(tensor.status().message(), HasSubstr("complex32"));
+
+  absl::StatusOr<at::Tensor> made =
+      MakeTensor(at::Scalar(1.0), at::ScalarType::ComplexHalf);
+  ASSERT_FALSE(made.ok());
+  EXPECT_EQ(made.status().code(), error::kPythonNotImplementedError);
 }
 
 TEST(EncodeParamCacheKey, OptionalPromotedScalar) {

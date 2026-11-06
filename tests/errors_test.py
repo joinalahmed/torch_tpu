@@ -417,6 +417,26 @@ class TpuVsGpuErrorTest(et.ErrorTestBase):
     ):
       torch.ops.aten.col2im(t, (2, 2), (2, 2), (1, 1), (0, 0), (1, 1))
 
+  def test_im2col_input_too_few_dims(self):
+    """Tests that im2col with a 2D input fails with expected error."""
+    t = torch.ones((4, 4), device=et.device(), dtype=torch.float32)
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""im2col(): expected input to have 3 or 4 dimensions, got 2""",
+        gpu="""Expected 3D or 4D (batch mode) tensor with possibly 0 batch size and other non-zero dimensions for input, but got: [4, 4]""",
+    ):
+      torch.ops.aten.im2col(t, (2, 2), (1, 1), (0, 0), (1, 1))
+
+  def test_im2col_kernel_larger_than_input(self):
+    """Tests that im2col with an empty sliding window fails."""
+    t = torch.ones((1, 1, 2, 2), device=et.device(), dtype=torch.float32)
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""im2col(): expected output shape to be positive, got 0x0""",
+        gpu="""Given input with spatial size (2, 2), kernel_size=(3, 3), dilation=(1, 1), padding=(0, 0), calculated shape of the array of sliding blocks as (0, 0), but its components must be at least one.""",
+    ):
+      torch.ops.aten.im2col(t, (3, 3), (1, 1), (0, 0), (1, 1))
+
   @parameterized.named_parameters(
       dict(
           testcase_name="bool",

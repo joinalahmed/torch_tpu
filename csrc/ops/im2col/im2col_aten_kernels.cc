@@ -44,14 +44,20 @@ absl::StatusOr<DeviceBufferRef> AtenIm2Col(const at::Tensor& self,
                                            at::IntArrayRef padding,
                                            at::IntArrayRef stride,
                                            OpParamCacheKeys param_keys) {
-  TT_RET_CHECK(kernel_size.size() == 2, error::kInvalidArgument)
+  // The aten::im2col schema types these parameters as int[2], so PyTorch
+  // rejects any other length before the kernel runs.
+  TT_RET_CHECK(  // ERROR_COV_INFEASIBLE=PyTorch catches this first.
+      kernel_size.size() == 2, error::kInvalidArgument)
       << "expected kernel_size to have 2 dimensions, got "
       << kernel_size.size();
-  TT_RET_CHECK(dilation.size() == 2, error::kInvalidArgument)
+  TT_RET_CHECK(  // ERROR_COV_INFEASIBLE=PyTorch catches this first.
+      dilation.size() == 2, error::kInvalidArgument)
       << "expected dilation to have 2 dimensions, got " << dilation.size();
-  TT_RET_CHECK(padding.size() == 2, error::kInvalidArgument)
+  TT_RET_CHECK(  // ERROR_COV_INFEASIBLE=PyTorch catches this first.
+      padding.size() == 2, error::kInvalidArgument)
       << "expected padding to have 2 dimensions, got " << padding.size();
-  TT_RET_CHECK(stride.size() == 2, error::kInvalidArgument)
+  TT_RET_CHECK(  // ERROR_COV_INFEASIBLE=PyTorch catches this first.
+      stride.size() == 2, error::kInvalidArgument)
       << "expected stride to have 2 dimensions, got " << stride.size();
 
   const bool is_3d = self.dim() == 3;

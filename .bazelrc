@@ -236,8 +236,17 @@ common:local --spawn_strategy=standalone
 common:local --strategy=standalone
 common:local --config=tpu_envvars
 
-# Config for no_remote builds
-common:no_rbe --config=local
+# Config for no_remote builds. Only remote execution and caching are turned
+# off; compile actions stay sandboxed. The torch wheels bundle an old copy of
+# the protobuf headers under torch/include/google/protobuf, and the torch
+# header targets keep those files out of their declared inputs so that they
+# cannot shadow @com_google_protobuf. That only holds when the compiler cannot
+# see undeclared files, so an unsandboxed (standalone) build fails to compile
+# anything that includes protobuf-generated code. Use --config=local to run
+# unsandboxed on purpose.
+common:no_rbe --config=tpu_envvars
+common:no_rbe --test_strategy=standalone
+common:no_rbe --strategy=TestRunner=standalone,local
 common:no_rbe --remote_cache=
 common:no_rbe --remote_executor=
 common:no_rbe --google_default_credentials=false

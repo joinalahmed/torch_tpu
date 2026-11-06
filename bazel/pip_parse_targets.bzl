@@ -16,39 +16,56 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
+_HEADER_EXTENSIONS = [
+    ".h",
+    ".hpp",
+    ".hh",
+    ".hxx",
+    ".cuh",
+    ".inc",
+    ".inl",
+    ".tcc",
+]
+
 def define_extra_torch_targets():
     """Defines additional targets for the PyTorch distribution inside site-packages."""
+
+    # Each include root of the wheel is exposed through strip_include_prefix,
+    # so the compiler searches a virtual include tree that holds only the
+    # declared headers. The wheel bundles an old copy of the protobuf headers
+    # under include/google/protobuf; leaving them out of hdrs then keeps them
+    # out of the include path in every execution strategy, sandboxed or not.
+    # With `includes` the compiler would search the real directory, and an
+    # unsandboxed build would pick up torch's protobuf headers ahead of
+    # @com_google_protobuf.
+    _TORCH_INCLUDE_ROOTS = {
+        "torch_headers_include": "site-packages/torch/include",
+        "torch_headers_api_include": (
+            "site-packages/torch/include/torch/csrc/api/include"
+        ),
+        "torch_headers_kineto_include": "site-packages/torch/include/kineto",
+    }
+    for target_name, include_root in _TORCH_INCLUDE_ROOTS.items():
+        cc_library(
+            # ALLOW_CC_TARGETS=Defines external PyTorch wheel targets in OSS Bazel build
+            name = target_name,
+            hdrs = native.glob(
+                include = [
+                    include_root + "/**/*" + extension
+                    for extension in _HEADER_EXTENSIONS
+                ],
+                exclude = [
+                    "site-packages/torch/include/google/protobuf/**",
+                ],
+                allow_empty = True,
+            ),
+            strip_include_prefix = include_root,
+        )
+
     cc_library(
         # ALLOW_CC_TARGETS=Defines external PyTorch wheel targets in OSS Bazel build
         name = "torch_headers",
-        hdrs = native.glob(
-            include = [
-                "site-packages/torch/**/*.h",
-                "site-packages/torch/**/*.hpp",
-                "site-packages/torch/**/*.hh",
-                "site-packages/torch/**/*.hxx",
-                "site-packages/torch/**/*.cuh",
-                "site-packages/torch/**/*.inc",
-                "site-packages/torch/**/*.inl",
-                "site-packages/torch/**/*.tcc",
-            ],
-            # Exclude PyTorch's bundled google/protobuf headers from declared
-            # inputs so they do not shadow @com_google_protobuf in
-            # sandboxed/remote builds.
-            exclude = [
-                "site-packages/torch/include/google/protobuf/**",
-            ],
-        ),
-        # NOTE: There's a Bazel bug with strip_include_prefix where it
-        # incorrectly thinks files provided by another target using
-        # a strip_include_prefix of a sub-directory aren't being correctly
-        # provided as dependencies. Using the `includes` attribute
-        # seems to work around this.
-        includes = [
-            "site-packages/torch/include",
-            "site-packages/torch/include/torch/csrc/api/include",
-            "site-packages/torch/include/kineto",
-        ],
+        deps = [":" + target_name for target_name in _TORCH_INCLUDE_ROOTS],
         visibility = ["//visibility:public"],
     )
 

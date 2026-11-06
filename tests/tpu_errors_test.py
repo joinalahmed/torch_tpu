@@ -466,6 +466,43 @@ Please use clone() or contiguous() to copy the tensor before writing""",
     ):
       torch.index_copy(self_tensor, 0, index, source, out=t)
 
+  @et.why_tpu_only("CPU reads past the end of the storage without a check.")
+  def test_view_reading_past_shrunk_storage(self):
+    """Tests that a view of a storage shrunk after creation cannot be read."""
+    t = torch.arange(8.0, device=et.device())
+    torch.accelerator.synchronize()
+    t.untyped_storage().resize_(16)
+    with et.assert_raises_message(
+        IndexError,
+        tpu="""mul(): cannot read 32 bytes (8 elements of type float32 with an offset of 0 elements) from a storage buffer with 16 bytes""",
+    ):
+      t * 1
+
+  @et.why_tpu_only("The storage check is specific to TorchTPU.")
+  def test_tensor_without_storage_data(self):
+    """Tests the error for a TPU tensor whose storage holds no device buffer.
+
+    A wrapper subclass created with _make_wrapper_subclass has a storage with a
+    null data_ptr. Re-dispatching the op with the Python dispatch key disabled
+    sends the wrapper itself to the TPU kernel.
+    """
+
+    class Wrapper(torch.Tensor):
+
+      @classmethod
+      def __torch_dispatch__(cls, func, types, args=(), kwargs=None):
+        with torch._C._DisableTorchDispatch():  # pylint: disable=protected-access
+          return func(*args, **(kwargs or {}))
+
+    wrapper = torch.Tensor._make_wrapper_subclass(  # pylint: disable=protected-access
+        Wrapper, (2,), dtype=torch.float32, device=et.device()
+    )
+    with et.assert_raises_message(
+        RuntimeError,
+        tpu="""add(): tensor is on the custom PrivateUse1 device. But its storage data_ptr is null. This is usually caused by FakeTensor being run on TPU ops. And it is not supported""",
+    ):
+      torch.ops.aten.add.Tensor(wrapper, 1)
+
   @et.why_tpu_only(
       "PyTorch CUDA _mm_dtype_cuda indexes self.size(0) and mat2.size(1)"
       " before check_mm_shapes, raising IndexError instead of RuntimeError."
